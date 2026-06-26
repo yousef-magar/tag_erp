@@ -3,7 +3,7 @@ import { useAppStore, ALL_MODULE_PATHS, DEFAULT_SIDEBAR_ORDER } from "@/hooks/us
 import { useProductionStore } from "@/hooks/use-production-store";
 import { logActivity } from "@/hooks/use-activity-log";
 import type { WarehouseConfig } from "@/hooks/use-production-store";
-import { createBackup, listBackups, restoreBackup, deleteBackup, resetAllData, exportAsJSON, importFromJSON, isAutoBackupEnabled, setAutoBackupEnabled } from "@/lib/database";
+import { createBackup, listBackups, restoreBackup, deleteBackup, resetAllData, exportAsJSON, importFromJSON, isAutoBackupEnabled, setAutoBackupEnabled, getAutoBackupIntervalMs, setAutoBackupIntervalMs, getBackupDirectories, addBackupDirectory, removeBackupDirectory, saveBackupToDirectories, isFolderBackupSupported, getFolderBackupIntervalMs, setFolderBackupIntervalMs, getLastFolderBackupTime, stopAutoBackupTimer, startAutoBackupTimer } from "@/lib/database";
 import type { BackupInfo } from "@/lib/database";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,7 @@ import SmartInput from "@/components/SmartInput";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { motion } from "framer-motion";
 
+import type { BackupDirRecord } from "@/lib/dexie-storage";
 import {
   Settings as SettingsIcon,
   Building,
@@ -48,6 +49,8 @@ import {
   Upload,
   X,
   TrendingUp,
+  Folder,
+  HardDrive,
   LucideIcon,
 } from "lucide-react";
 
@@ -114,6 +117,14 @@ export default function Settings() {
   const [showBackups, setShowBackups] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [resetMsg, setResetMsg] = useState("");
+  const [backupDirs, setBackupDirs] = useState<BackupDirRecord[]>([]);
+  const [folderBackingUp, setFolderBackingUp] = useState(false);
+  const [folderBackupMsg, setFolderBackupMsg] = useState("");
+
+  const intervalHours = Math.round(getFolderBackupIntervalMs() / 3600000);
+  const [folderInterval, setFolderInterval] = useState(intervalHours);
+
+  React.useEffect(() => { loadBackupDirs(); }, []);
 
   const handleBackup = async () => {
     setBackingUp(true);
@@ -128,12 +139,54 @@ export default function Settings() {
   const handleReset = async () => {
     setShowResetConfirm(false);
     setResetMsg(t("جاري حذف البيانات...", "Deleting data..."));
+    try { logActivity("settings", "delete", `إعادة تعيين النظام`, `System reset`); } catch {}
+    try { await resetAllData(); } catch (e) { console.error("Reset error:", e); }
+    setResetMsg(t("تم حذف البيانات. سيتم إعادة تحميل الصفحة...", "Data deleted. Reloading..."));
+    setTimeout(() => window.location.reload(), 1500);
+  };
+
+  const loadBackupDirs = async () => {
+    try { setBackupDirs(await getBackupDirectories()); } catch {}
+  };
+
+  const handlePickFolder = async () => {
     try {
-      logActivity("settings", "delete", `إعادة تعيين النظام`, `System reset`);
-      await resetAllData();
-      setResetMsg(t("تم حذف البيانات. سيتم إعادة تحميل الصفحة...", "Data deleted. Reloading..."));
-      setTimeout(() => window.location.reload(), 1500);
-    } catch { setResetMsg(t("فشل الحذف", "Reset failed")); }
+      const dirHandle = await window.showDirectoryPicker();
+      const exists = backupDirs.some(d => d.name === dirHandle.name);
+      if (exists) {
+        setFolderBackupMsg(t("المجلد مضاف بالفعل", "Folder already added"));
+        setTimeout(() => setFolderBackupMsg(""), 3000);
+        return;
+      }
+      await addBackupDirectory(dirHandle.name, dirHandle);
+      await loadBackupDirs();
+    } catch (err: any) {
+      if (err?.name !== "AbortError" && err?.name !== "SecurityError") {
+        setFolderBackupMsg(t("فشل إضافة المجلد", "Failed to add folder"));
+        setTimeout(() => setFolderBackupMsg(""), 3000);
+      }
+    }
+  };
+
+  const handleRemoveDir = async (id: number) => {
+    await removeBackupDirectory(id);
+    await loadBackupDirs();
+  };
+
+  const handleFolderBackup = async () => {
+    setFolderBackingUp(true);
+    try {
+      const files = await saveBackupToDirectories();
+      if (files.length > 0) {
+        setFolderBackupMsg(t(`تم الحفظ: ${files[0]}`, `Saved: ${files[0]}`));
+      } else {
+        setFolderBackupMsg(t("لم يتم الحفظ — أضف مجلداً أولاً", "Not saved — add a folder first"));
+      }
+    } catch {
+      setFolderBackupMsg(t("فشل النسخ للمجلد", "Folder backup failed"));
+    }
+    setFolderBackingUp(false);
+    setTimeout(() => setFolderBackupMsg(""), 4000);
   };
 
   const updateMainPassword = (pwd: string) => {
@@ -699,9 +752,26 @@ export default function Settings() {
             <h3 className="text-sm sm:text-base font-semibold mb-3">{t("النسخ الاحتياطي", "Backup & Restore")}</h3>
             <div className="flex items-center gap-3 mb-3 p-2.5 rounded-lg bg-muted/20">
               <Switch checked={isAutoBackupEnabled()} onCheckedChange={setAutoBackupEnabled} />
-              <div>
-                <p className="text-xs font-medium">{t("نسخ احتياطي تلقائي", "Auto Backup")}</p>
-                <p className="text-[10px] text-muted-foreground">{t("إنشاء نسخة كل 6 ساعات تلقائياً", "Create backup every 6 hours automatically")}</p>
+              <div className="flex items-center gap-2 flex-1">
+                <div>
+                  <p className="text-xs font-medium">{t("نسخ احتياطي تلقائي", "Auto Backup")}</p>
+                  <p className="text-[10px] text-muted-foreground">{t("إنشاء نسخة تلقائياً", "Create backup automatically")}</p>
+                </div>
+                {(() => {
+                  const curH = Math.round(getAutoBackupIntervalMs() / 3600000);
+                  return (
+                    <Select value={String(curH)} onValueChange={v => setAutoBackupIntervalMs(parseInt(v) * 3600000)}>
+                      <SelectTrigger className="h-7 w-[90px] text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {[1, 2, 4, 6, 8, 12, 24].map(h => (
+                          <SelectItem key={h} value={String(h)}>{h} {t("ساعة", "hr")}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  );
+                })()}
               </div>
             </div>
             {!showBackups ? (
@@ -775,6 +845,85 @@ export default function Settings() {
                 )}
               </div>
             )}
+          </div>
+
+          {/* ── Folder Backup ── */}
+          <div className="border-t border-border/30 pt-6" onFocus={loadBackupDirs} tabIndex={-1}>
+            <h3 className="text-sm sm:text-base font-semibold mb-3">{t("النسخ الاحتياطي للمجلد", "Folder Backup")}</h3>
+            <p className="text-[10px] text-muted-foreground mb-3">
+              {t("يحفظ نسخة كاملة من كل البيانات (المخازن المحلية + Dexie) إلى مجلد على جهازك", "Saves a complete copy of ALL data (localStorage + Dexie) to a folder on your machine")}
+            </p>
+
+            {/* Folder list */}
+            <div className="space-y-1.5 mb-3">
+              {backupDirs.map(dir => (
+                <div key={dir.id} className="flex items-center justify-between px-3 py-2 bg-muted/20 rounded-lg text-xs">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <HardDrive className="w-3.5 h-3.5 text-primary shrink-0" />
+                    <span className="truncate">{dir.name}</span>
+                  </div>
+                  <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-destructive shrink-0"
+                    onClick={() => handleRemoveDir(dir.id!)}>
+                    <X className="w-3 h-3" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+
+            {/* Add / Backup buttons */}
+            <div className="flex flex-wrap gap-2 mb-2">
+              {isFolderBackupSupported() ? (
+                <Button variant="outline" className="gap-1.5 h-8 text-xs" onClick={handlePickFolder}>
+                  <Folder className="w-3.5 h-3.5" />
+                  {t("إضافة مجلد", "Add Folder")}
+                </Button>
+              ) : (
+                <p className="text-xs text-muted-foreground p-2 bg-muted/30 rounded">
+                  {t("المتصفح لا يدعم حفظ المجلدات — استخدم Chrome أو Edge", "Browser doesn't support folder saving — use Chrome or Edge")}
+                </p>
+              )}
+              <Button variant="outline" className="gap-1.5 h-8 text-xs" onClick={handleFolderBackup} disabled={folderBackingUp}>
+                <HardDrive className="w-3.5 h-3.5" />
+                {folderBackingUp ? t("جاري...", "Processing...") : t("نسخ للمجلد الآن", "Backup to Folders Now")}
+              </Button>
+            </div>
+
+            {/* Auto-backup interval */}
+            <div className="flex items-center gap-3 mb-2 p-2.5 rounded-lg bg-muted/20">
+              <div className="flex items-center gap-2 flex-1">
+                <p className="text-xs font-medium">{t("نسخ احتياطي تلقائي كل", "Auto backup every")}</p>
+                <Select value={String(folderInterval)} onValueChange={v => {
+                  const hours = parseInt(v);
+                  setFolderInterval(hours);
+                  setFolderBackupIntervalMs(hours * 3600000);
+                  stopAutoBackupTimer();
+                  startAutoBackupTimer();
+                }}>
+                  <SelectTrigger className="h-7 w-20 text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {[1, 2, 4, 6, 8, 12, 24].map(h => (
+                      <SelectItem key={h} value={String(h)}>{h} {t("ساعة", "hr")}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {/* Last backup time */}
+            {(() => {
+              const lastTime = getLastFolderBackupTime();
+              if (!lastTime) return null;
+              const hoursAgo = ((Date.now() - lastTime) / 3600000).toFixed(1);
+              return (
+                <p className="text-[10px] text-muted-foreground">
+                  {t(`آخر نسخة: ${new Date(lastTime).toLocaleString("ar-EG")} (منذ ${hoursAgo} ساعة)`, `Last backup: ${new Date(lastTime).toLocaleString()} (${hoursAgo} hours ago)`)}
+                </p>
+              );
+            })()}
+
+            {folderBackupMsg && <p className="text-xs mt-1 text-emerald-500">{folderBackupMsg}</p>}
           </div>
 
           {/* ── Print Settings ── */}

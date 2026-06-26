@@ -2,7 +2,6 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { dexieStorage } from "@/lib/dexie-storage";
 import { api } from "@/lib/api";
-import { withSync } from "@/lib/with-sync";
 import { logActivity } from "./use-activity-log";
 
 export interface Supplier {
@@ -104,101 +103,87 @@ export const useProcurementStore = create<ProcState>()(
       payments: [],
       addSupplier: async (s) => {
         const full = { ...s, id: `SUP-${Date.now()}`, totalPurchases: 0, lastPurchase: "" };
-        const created = await withSync(() => api.suppliers.create(full), "المورد");
-        const saved = created || full;
-        if (saved) {
-          set(state => ({ suppliers: [...state.suppliers, saved] }));
-          logActivity("procurement", "create", `إضافة مورد: ${saved.name}`, `Add supplier: ${saved.name}`, saved.id);
-        }
-        return saved;
+        set(state => ({ suppliers: [...state.suppliers, full] }));
+        logActivity("procurement", "create", `إضافة مورد: ${full.name}`, `Add supplier: ${full.name}`, full.id);
+        api.suppliers.create(full).catch(() => {});
+        return full;
       },
       updateSupplier: async (id, data) => {
-        const updated = await withSync(() => api.suppliers.update(id, data), "المورد");
-        const saved = updated || data;
-        if (saved) {
-          set(state => ({ suppliers: state.suppliers.map(s => s.id === id ? { ...s, ...saved } : s) }));
-          logActivity("procurement", "update", `تحديث بيانات المورد: ${id}`, `Update supplier: ${id}`, id);
-        }
-        return saved;
+        const existing = get().suppliers.find(s => s.id === id);
+        const merged = existing ? { ...existing, ...data } : ({ ...data, id } as Supplier);
+        set(state => ({ suppliers: state.suppliers.map(s => s.id === id ? merged : s) }));
+        logActivity("procurement", "update", `تحديث بيانات المورد: ${id}`, `Update supplier: ${id}`, id);
+        api.suppliers.update(id, data).catch(() => {});
+        return merged;
       },
       deleteSupplier: async (id) => {
-        await withSync<any>(() => api.suppliers.delete(id), "المورد").catch(() => {});
         set(state => ({ suppliers: state.suppliers.filter(s => s.id !== id) }));
         logActivity("procurement", "delete", `حذف المورد: ${id}`, `Delete supplier: ${id}`, id);
+        api.suppliers.delete(id).catch(() => {});
       },
       addOrder: async (o) => {
-        const created = await withSync(() => api.purchaseOrders.create(o), "أمر الشراء");
-        const saved = created || o;
-        if (saved) {
-          set(state => {
-            const now = new Date().toISOString().split("T")[0];
-            return {
-              orders: [...state.orders, saved],
-              suppliers: state.suppliers.map(s => s.id === o.supplierId ? {
-                ...s,
-                totalPurchases: (s.totalPurchases || 0) + Number(saved.total || 0),
-                lastPurchase: now,
-                outstandingDebt: (s.outstandingDebt || 0) + (Number(saved.total || 0) - Number(saved.paidAmount || 0)),
-              } : s),
-            };
-          });
-          logActivity("procurement", "create", `إنشاء أمر شراء: ${saved.id} - ${saved.supplierName} - ${saved.total} جنيه`, `New PO: ${saved.id} - ${saved.supplierName} - ${saved.total} EGP`, saved.id);
-        }
-        return saved;
+        set(state => {
+          const now = new Date().toISOString().split("T")[0];
+          return {
+            orders: [...state.orders, o],
+            suppliers: state.suppliers.map(s => s.id === o.supplierId ? {
+              ...s,
+              totalPurchases: (s.totalPurchases || 0) + Number(o.total || 0),
+              lastPurchase: now,
+              outstandingDebt: (s.outstandingDebt || 0) + (Number(o.total || 0) - Number(o.paidAmount || 0)),
+            } : s),
+          };
+        });
+        logActivity("procurement", "create", `إنشاء أمر شراء: ${o.id} - ${o.supplierName} - ${o.total} جنيه`, `New PO: ${o.id} - ${o.supplierName} - ${o.total} EGP`, o.id);
+        api.purchaseOrders.create(o).catch(() => {});
+        return o;
       },
       updateOrder: async (id, data) => {
-        const updated = await withSync(() => api.purchaseOrders.update(id, data), "أمر الشراء");
-        const saved = updated || data;
-        if (saved) {
-          set(state => ({ orders: state.orders.map(o => o.id === id ? { ...o, ...saved } : o) }));
-          logActivity("procurement", "update", `تحديث أمر الشراء: ${id}`, `Update PO: ${id}`, id);
-        }
-        return saved;
+        const existing = get().orders.find(o => o.id === id);
+        const merged = existing ? { ...existing, ...data } : ({ ...data, id } as PurchaseOrder);
+        set(state => ({ orders: state.orders.map(o => o.id === id ? merged : o) }));
+        logActivity("procurement", "update", `تحديث أمر الشراء: ${id}`, `Update PO: ${id}`, id);
+        api.purchaseOrders.update(id, data).catch(() => {});
+        return merged;
       },
       deleteOrder: async (id) => {
-        const res = await withSync<any>(() => api.purchaseOrders.delete(id), "أمر الشراء");
         set(state => ({ orders: state.orders.filter(o => o.id !== id) }));
         logActivity("procurement", "delete", `حذف أمر الشراء: ${id}`, `Delete PO: ${id}`, id);
+        api.purchaseOrders.delete(id).catch(() => {});
       },
       addReturn: async (r) => {
-        const created = await withSync(() => api.purchaseReturns.create(r), "مرتجع الشراء");
-        const saved = created || r;
-        if (saved) {
-          set(state => ({
-            returns: [...state.returns, saved],
-            orders: state.orders.map(o => o.id === r.poId ? { ...o, total: (o.total || 0) - (saved.total || 0) } : o),
-          }));
-          logActivity("procurement", "create", `إضافة مرتجع مشتريات: ${saved.id} - ${saved.total} جنيه`, `New purchase return: ${saved.id} - ${saved.total} EGP`, saved.id);
-        }
-        return saved;
+        set(state => ({
+          returns: [...state.returns, r],
+          orders: state.orders.map(o => o.id === r.poId ? { ...o, total: (o.total || 0) - (r.total || 0) } : o),
+        }));
+        logActivity("procurement", "create", `إضافة مرتجع مشتريات: ${r.id} - ${r.total} جنيه`, `New purchase return: ${r.id} - ${r.total} EGP`, r.id);
+        api.purchaseReturns.create(r).catch(() => {});
+        return r;
       },
       addPayment: async (pmt) => {
-        const created = await withSync(() => api.supplierPayments.create(pmt), "الدفعة");
-        const saved = created || pmt;
-        if (saved) {
-          set(state => {
-            let updatedOrders = [...state.orders];
-            for (const alloc of (saved as any).allocations || pmt.allocations) {
-              updatedOrders = updatedOrders.map(o =>
-                o.id === alloc.poId
-                  ? { ...o, paidAmount: (o.paidAmount || 0) + alloc.amount, status: ((o.paidAmount || 0) + alloc.amount >= o.total ? "paid" : o.status) as any }
-                  : o
-              );
-            }
-            const paidTotal = (saved as any).allocations?.reduce((s: number, a: any) => s + a.amount, 0) || pmt.allocations.reduce((s, a) => s + a.amount, 0);
-            return {
-              payments: [...state.payments, saved],
-              orders: updatedOrders,
-              suppliers: state.suppliers.map(s =>
-                s.id === pmt.supplierId
-                  ? { ...s, outstandingDebt: Math.max(0, (s.outstandingDebt || 0) - paidTotal) }
-                  : s
-              ),
-            };
-          });
-          logActivity("procurement", "create", `تسجيل دفعة مورد: ${pmt.amount} جنيه لـ ${pmt.supplierName}`, `Supplier payment: ${pmt.amount} EGP to ${pmt.supplierName}`, pmt.id);
-        }
-        return saved;
+        set(state => {
+          let updatedOrders = [...state.orders];
+          for (const alloc of pmt.allocations) {
+            updatedOrders = updatedOrders.map(o =>
+              o.id === alloc.poId
+                ? { ...o, paidAmount: (o.paidAmount || 0) + alloc.amount, status: ((o.paidAmount || 0) + alloc.amount >= o.total ? "paid" : o.status) as any }
+                : o
+            );
+          }
+          const paidTotal = pmt.allocations.reduce((s, a) => s + a.amount, 0);
+          return {
+            payments: [...state.payments, pmt],
+            orders: updatedOrders,
+            suppliers: state.suppliers.map(s =>
+              s.id === pmt.supplierId
+                ? { ...s, outstandingDebt: Math.max(0, (s.outstandingDebt || 0) - paidTotal) }
+                : s
+            ),
+          };
+        });
+        logActivity("procurement", "create", `تسجيل دفعة مورد: ${pmt.amount} جنيه لـ ${pmt.supplierName}`, `Supplier payment: ${pmt.amount} EGP to ${pmt.supplierName}`, pmt.id);
+        api.supplierPayments.create(pmt).catch(() => {});
+        return pmt;
       },
       recalcDebt: (supplierId) => set(state => {
         const total = state.orders

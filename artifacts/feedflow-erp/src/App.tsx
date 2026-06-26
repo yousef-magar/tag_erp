@@ -6,7 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/not-found";
 
 import { useAppStore } from "@/hooks/use-app-store";
-import { runAutoBackupIfNeeded } from "@/lib/database";
+import { runAutoBackupIfNeeded, startAutoBackupTimer } from "@/lib/database";
 import { migrateFromLocalStorage } from "@/lib/dexie-storage";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { OverdueChecker } from "@/components/OverdueChecker";
@@ -95,6 +95,7 @@ function App() {
   useEffect(() => {
     migrateFromLocalStorage(["ff-sales", "ff-hr-store", "ff-fleet", "ff-procurement", "ff-pricing-store-v3", "ff-activity-log"]);
     runAutoBackupIfNeeded();
+    startAutoBackupTimer();
   }, []);
 
   return (

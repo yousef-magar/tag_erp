@@ -1,11 +1,21 @@
 import Dexie, { type Table } from "dexie";
 
+export interface BackupDirRecord {
+  id?: number;
+  name: string;
+  handle: FileSystemDirectoryHandle;
+}
+
 class FeedFlowDB extends Dexie {
   kv!: Table<{ key: string; value: string }>;
+  backupDirs!: Table<BackupDirRecord>;
 
   constructor() {
     super("FeedFlowDB");
-    this.version(1).stores({ kv: "key" });
+    this.version(2).stores({
+      kv: "key",
+      backupDirs: "++id",
+    });
   }
 }
 

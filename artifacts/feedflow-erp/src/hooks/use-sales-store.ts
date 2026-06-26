@@ -2,7 +2,6 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { dexieStorage } from "@/lib/dexie-storage";
 import { api } from "@/lib/api";
-import { withSync } from "@/lib/with-sync";
 import { logActivity } from "./use-activity-log";
 
 export interface SalesInvoiceItem {
@@ -132,37 +131,48 @@ export const useSalesStore = create<SalesState>()(
       customers: [],
       payments: [],
       addInvoice: async (inv) => {
-        const created = await withSync(() => api.invoices.create(inv), "الفاتورة");
-        if (created) { set(s => ({ invoices: [created, ...s.invoices] })); logActivity("sales", "create", `إنشاء فاتورة: ${created.id} - ${created.customerName} - ${created.total} جنيه`, `New invoice: ${created.id} - ${created.customerName} - ${created.total} EGP`, created.id); }
-        return created;
+        set(s => ({ invoices: [inv, ...s.invoices] }));
+        logActivity("sales", "create", `إنشاء فاتورة: ${inv.id} - ${inv.customerName} - ${inv.total} جنيه`, `New invoice: ${inv.id} - ${inv.customerName} - ${inv.total} EGP`, inv.id);
+        api.invoices.create(inv).catch(() => {});
+        return inv;
       },
       updateInvoice: async (id, data) => {
-        const updated = await withSync(() => api.invoices.update(id, data), "الفاتورة");
-        if (updated) { set(s => ({ invoices: s.invoices.map(i => i.id === id ? updated : i) })); logActivity("sales", "update", `تحديث الفاتورة: ${id}`, `Update invoice: ${id}`, id); }
-        return updated;
+        const existing = get().invoices.find(i => i.id === id);
+        const merged = existing ? { ...existing, ...data } : ({ ...data, id } as SalesInvoice);
+        set(s => ({ invoices: s.invoices.map(i => i.id === id ? merged : i) }));
+        logActivity("sales", "update", `تحديث الفاتورة: ${id}`, `Update invoice: ${id}`, id);
+        api.invoices.update(id, data).catch(() => {});
+        return merged;
       },
       deleteInvoice: async (id) => {
-        const res = await withSync<any>(() => api.invoices.delete(id), "الفاتورة");
-        if (res) { set(s => ({ invoices: s.invoices.filter(i => i.id !== id) })); logActivity("sales", "delete", `حذف الفاتورة: ${id}`, `Delete invoice: ${id}`, id); }
+        set(s => ({ invoices: s.invoices.filter(i => i.id !== id) }));
+        logActivity("sales", "delete", `حذف الفاتورة: ${id}`, `Delete invoice: ${id}`, id);
+        api.invoices.delete(id).catch(() => {});
       },
       addReturn: async (ret) => {
-        const created = await withSync(() => api.returns.create(ret), "المرتجع");
-        if (created) { set(s => ({ returns: [created, ...s.returns] })); logActivity("sales", "create", `إضافة مرتجع: ${created.id} - ${created.customerName} - ${created.total} جنيه`, `New return: ${created.id} - ${created.customerName} - ${created.total} EGP`, created.id); }
-        return created;
+        set(s => ({ returns: [ret, ...s.returns] }));
+        logActivity("sales", "create", `إضافة مرتجع: ${ret.id} - ${ret.customerName} - ${ret.total} جنيه`, `New return: ${ret.id} - ${ret.customerName} - ${ret.total} EGP`, ret.id);
+        api.returns.create(ret).catch(() => {});
+        return ret;
       },
       addCustomer: async (c) => {
-        const created = await withSync(() => api.customers.create(c), "العميل");
-        if (created) { set(s => ({ customers: [...s.customers, created] })); logActivity("customers", "create", `إضافة عميل: ${created.name}`, `Add customer: ${created.name}`, created.id); }
-        return created;
+        set(s => ({ customers: [...s.customers, c] }));
+        logActivity("customers", "create", `إضافة عميل: ${c.name}`, `Add customer: ${c.name}`, c.id);
+        api.customers.create(c).catch(() => {});
+        return c;
       },
       updateCustomer: async (id, data) => {
-        const updated = await withSync(() => api.customers.update(id, data), "العميل");
-        if (updated) { set(s => ({ customers: s.customers.map(c => c.id === id ? updated : c) })); logActivity("customers", "update", `تحديث بيانات العميل: ${id}`, `Update customer: ${id}`, id); }
-        return updated;
+        const existing = get().customers.find(c => c.id === id);
+        const merged = existing ? { ...existing, ...data } : ({ ...data, id } as Customer);
+        set(s => ({ customers: s.customers.map(c => c.id === id ? merged : c) }));
+        logActivity("customers", "update", `تحديث بيانات العميل: ${id}`, `Update customer: ${id}`, id);
+        api.customers.update(id, data).catch(() => {});
+        return merged;
       },
       deleteCustomer: async (id) => {
-        const res = await withSync<any>(() => api.customers.delete(id), "العميل");
-        if (res) { set(s => ({ customers: s.customers.filter(c => c.id !== id) })); logActivity("customers", "delete", `حذف العميل: ${id}`, `Delete customer: ${id}`, id); }
+        set(s => ({ customers: s.customers.filter(c => c.id !== id) }));
+        logActivity("customers", "delete", `حذف العميل: ${id}`, `Delete customer: ${id}`, id);
+        api.customers.delete(id).catch(() => {});
       },
       saveCustomerAddress: (customerId, addr) => set(s => ({
         customers: s.customers.map(c => {

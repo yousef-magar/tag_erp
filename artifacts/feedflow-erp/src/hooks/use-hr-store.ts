@@ -2,7 +2,6 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { dexieStorage } from "@/lib/dexie-storage";
 import { api } from "@/lib/api";
-import { withSync } from "@/lib/with-sync";
 import { logActivity } from "./use-activity-log";
 
 export type SalaryType = "monthly" | "weekly";
@@ -184,49 +183,46 @@ export const useHRStore = create<HRState>()(
 
         addEmployee: async (emp) => {
           const newId = `E${Date.now()}`;
-          const created = await withSync(() => api.employees.create({ ...emp, id: newId }), "الموظف");
-          if (created) {
-            const now = new Date();
-            const y = now.getFullYear();
-            const m = now.getMonth() + 1;
-            const total = daysInMonth(y, m);
-            const today = now.getDate();
-            const joinDate = emp.joinDate ? new Date(emp.joinDate) : now;
-            const joinDay = Math.max(1, joinDate.getDate());
-            const startDay = joinDate.getFullYear() === y && joinDate.getMonth() + 1 === m ? joinDay : 1;
-            const empAttendance: Record<string, AttendanceStatus> = {};
-            const empIncentive: Record<string, boolean> = {};
-            for (let d = startDay; d <= Math.min(today, total); d++) {
-              const date = `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
-              empAttendance[date] = "present";
-              empIncentive[date] = false;
-            }
-            set((s) => ({
-              employees: [...s.employees, created],
-              attendance: { ...s.attendance, [newId]: empAttendance },
-              incentiveApproved: { ...s.incentiveApproved, [newId]: empIncentive },
-              leaveBalance: { ...s.leaveBalance, [newId]: { [String(y)]: 21 } },
-            }));
-            logActivity("hr", "create", `إضافة موظف: ${created.name}`, `Add employee: ${created.name}`, created.id);
+          const employee: Employee = { ...emp, id: newId };
+          const now = new Date();
+          const y = now.getFullYear();
+          const m = now.getMonth() + 1;
+          const total = daysInMonth(y, m);
+          const today = now.getDate();
+          const joinDate = emp.joinDate ? new Date(emp.joinDate) : now;
+          const joinDay = Math.max(1, joinDate.getDate());
+          const startDay = joinDate.getFullYear() === y && joinDate.getMonth() + 1 === m ? joinDay : 1;
+          const empAttendance: Record<string, AttendanceStatus> = {};
+          const empIncentive: Record<string, boolean> = {};
+          for (let d = startDay; d <= Math.min(today, total); d++) {
+            const date = `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+            empAttendance[date] = "present";
+            empIncentive[date] = false;
           }
-          return created;
+          set((s) => ({
+            employees: [...s.employees, employee],
+            attendance: { ...s.attendance, [newId]: empAttendance },
+            incentiveApproved: { ...s.incentiveApproved, [newId]: empIncentive },
+            leaveBalance: { ...s.leaveBalance, [newId]: { [String(y)]: 21 } },
+          }));
+          logActivity("hr", "create", `إضافة موظف: ${employee.name}`, `Add employee: ${employee.name}`, employee.id);
+          api.employees.create(employee).catch(() => {});
+          return employee;
         },
 
         updateEmployee: async (id, updates) => {
-          const updated = await withSync(() => api.employees.update(id, updates), "الموظف");
-          if (updated) {
-            set((s) => ({ employees: s.employees.map((e) => e.id === id ? updated : e) }));
-            logActivity("hr", "update", `تحديث بيانات الموظف: ${id}`, `Update employee: ${id}`, id);
-          }
-          return updated;
+          const existing = get().employees.find(e => e.id === id);
+          const merged = existing ? { ...existing, ...updates } : ({ ...updates, id } as Employee);
+          set((s) => ({ employees: s.employees.map((e) => e.id === id ? merged : e) }));
+          logActivity("hr", "update", `تحديث بيانات الموظف: ${id}`, `Update employee: ${id}`, id);
+          api.employees.update(id, updates).catch(() => {});
+          return merged;
         },
 
         deleteEmployee: async (id) => {
-          const res = await withSync<any>(() => api.employees.delete(id), "الموظف");
-          if (res) {
-            set((s) => ({ employees: s.employees.filter((e) => e.id !== id) }));
-            logActivity("hr", "delete", `حذف الموظف: ${id}`, `Delete employee: ${id}`, id);
-          }
+          set((s) => ({ employees: s.employees.filter((e) => e.id !== id) }));
+          logActivity("hr", "delete", `حذف الموظف: ${id}`, `Delete employee: ${id}`, id);
+          api.employees.delete(id).catch(() => {});
         },
 
         setAttendance: (employeeId, date, status) =>

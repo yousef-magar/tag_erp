@@ -2,7 +2,6 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { dexieStorage } from "@/lib/dexie-storage";
 import { api } from "@/lib/api";
-import { withSync } from "@/lib/with-sync";
 import { logActivity } from "./use-activity-log";
 
 export interface VehicleExpense {
@@ -82,21 +81,21 @@ export const useFleetStore = create<FleetState>()(
       vehicles: [],
       shipments: [],
       addVehicle: async (v) => {
-        const created = await withSync(() => api.vehicles.create({ ...v, id: `V${Date.now()}` }), "المركبة");
-        if (created) set(state => ({ vehicles: [...state.vehicles, created] }));
-        if (created) logActivity("fleet", "create", `إضافة مركبة جديدة: ${created.name}`, `New vehicle: ${created.name}`, created.id);
-        return created;
+        const vehicle: FleetVehicle = { ...v, id: `V${Date.now()}` };
+        set(state => ({ vehicles: [...state.vehicles, vehicle] }));
+        logActivity("fleet", "create", `إضافة مركبة جديدة: ${vehicle.name}`, `New vehicle: ${vehicle.name}`, vehicle.id);
+        api.vehicles.create(vehicle).catch(() => {});
+        return vehicle;
       },
       updateVehicle: async (id, data) => {
-        const updated = await withSync(() => api.vehicles.update(id, data), "المركبة");
-        if (updated) set(state => ({ vehicles: state.vehicles.map(v => v.id === id ? updated : v) }));
-        if (updated) logActivity("fleet", "update", `تحديث بيانات المركبة: ${updated.name}`, `Updated vehicle: ${updated.name}`, id);
-        return updated;
+        set(state => ({ vehicles: state.vehicles.map(v => v.id === id ? { ...v, ...data } : v) }));
+        logActivity("fleet", "update", `تحديث بيانات المركبة: ${data.name || ""}`, `Updated vehicle: ${data.name || ""}`, id);
+        api.vehicles.update(id, data).catch(() => {});
       },
       deleteVehicle: async (id) => {
-        const res = await withSync<any>(() => api.vehicles.delete(id), "المركبة");
-        if (res) set(state => ({ vehicles: state.vehicles.filter(v => v.id !== id) }));
+        set(state => ({ vehicles: state.vehicles.filter(v => v.id !== id) }));
         logActivity("fleet", "delete", `حذف المركبة`, `Deleted vehicle`, id);
+        api.vehicles.delete(id).catch(() => {});
       },
       addVehicleExpense: (vehicleId, expense) => {
         const v = useFleetStore.getState().vehicles.find(v => v.id === vehicleId);
@@ -121,47 +120,43 @@ export const useFleetStore = create<FleetState>()(
         logActivity("fleet", "delete", `حذف مصروف من المركبة ${v?.name || ""}`, `Deleted expense from vehicle ${v?.name || ""}`, vehicleId);
       },
       addShipment: async (s) => {
-        const created = await withSync(() => api.shipments.create(s), "الشحنة");
-        if (created) {
-          set(state => ({
-            shipments: [...state.shipments, created],
-            vehicles: state.vehicles.map(v => v.id === s.vehicleId ? { ...v, status: "loading" as const } : v),
-          }));
-          logActivity("fleet", "create", `إضافة شحنة جديدة للمركبة ${created.vehicleName}`, `New shipment for ${created.vehicleName}`, created.id);
-        }
-        return created;
+        set(state => ({
+          shipments: [...state.shipments, s],
+          vehicles: state.vehicles.map(v => v.id === s.vehicleId ? { ...v, status: "loading" as const } : v),
+        }));
+        logActivity("fleet", "create", `إضافة شحنة جديدة للمركبة ${s.vehicleName}`, `New shipment for ${s.vehicleName}`, s.id);
+        api.shipments.create(s).catch(() => {});
+        return s;
       },
       updateShipment: async (id, data) => {
-        const res = await withSync<any>(() => api.shipments.update(id, data), "الشحنة");
-        if (res) {
-          set(state => {
-            const s = state.shipments.find(sh => sh.id === id);
-            if (data.status === "delivered" && s) {
-              return {
-                shipments: state.shipments.map(sh => sh.id === id ? { ...sh, ...data, deliveredDate: new Date().toISOString().split("T")[0] } : sh),
-                vehicles: state.vehicles.map(v => v.id === s.vehicleId ? { ...v, status: "available" as const, locationType: "at-factory" as const } : v),
-              };
-            }
-            if (data.status === "on-route" && s) {
-              return {
-                shipments: state.shipments.map(sh => sh.id === id ? { ...sh, ...data, departureDate: new Date().toISOString().split("T")[0] } : sh),
-                vehicles: state.vehicles.map(v => v.id === s.vehicleId ? { ...v, status: "on-route" as const, locationType: "with-driver" as const } : v),
-              };
-            }
+        set(state => {
+          const s = state.shipments.find(sh => sh.id === id);
+          if (data.status === "delivered" && s) {
             return {
-              shipments: state.shipments.map(sh => sh.id === id ? { ...sh, ...data } : sh),
+              shipments: state.shipments.map(sh => sh.id === id ? { ...sh, ...data, deliveredDate: new Date().toISOString().split("T")[0] } : sh),
+              vehicles: state.vehicles.map(v => v.id === s.vehicleId ? { ...v, status: "available" as const, locationType: "at-factory" as const } : v),
             };
-          });
-          if (data.status === "delivered") {
-            logActivity("fleet", "update", `تسليم الشحنة ${id}`, `Shipment delivered ${id}`, id);
-          } else if (data.status === "on-route") {
-            logActivity("fleet", "update", `انطلاق الشحنة ${id}`, `Shipment departed ${id}`, id);
           }
+          if (data.status === "on-route" && s) {
+            return {
+              shipments: state.shipments.map(sh => sh.id === id ? { ...sh, ...data, departureDate: new Date().toISOString().split("T")[0] } : sh),
+              vehicles: state.vehicles.map(v => v.id === s.vehicleId ? { ...v, status: "on-route" as const, locationType: "with-driver" as const } : v),
+            };
+          }
+          return {
+            shipments: state.shipments.map(sh => sh.id === id ? { ...sh, ...data } : sh),
+          };
+        });
+        if (data.status === "delivered") {
+          logActivity("fleet", "update", `تسليم الشحنة ${id}`, `Shipment delivered ${id}`, id);
+        } else if (data.status === "on-route") {
+          logActivity("fleet", "update", `انطلاق الشحنة ${id}`, `Shipment departed ${id}`, id);
         }
+        api.shipments.update(id, data).catch(() => {});
       },
       deleteShipment: async (id) => {
-        const res = await withSync<any>(() => api.shipments.delete(id), "الشحنة");
-        if (res) set(state => ({ shipments: state.shipments.filter(sh => sh.id !== id) }));
+        set(state => ({ shipments: state.shipments.filter(sh => sh.id !== id) }));
+        api.shipments.delete(id).catch(() => {});
       },
     }),
     { name: "ff-fleet", storage: dexieStorage }

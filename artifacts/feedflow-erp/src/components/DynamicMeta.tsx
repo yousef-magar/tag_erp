@@ -1,24 +1,27 @@
 import { useEffect, useRef } from "react";
 import { useAppStore } from "@/hooks/use-app-store";
 
-const DEFAULT_TITLE = "FeedFlow ERP AI";
 const DEFAULT_FAVICON = "/favicon.svg";
 
 export function DynamicMeta() {
   const companyName = useAppStore(s => s.companyName);
   const companyLogo = useAppStore(s => s.companyLogo);
+  const language = useAppStore(s => s.language);
   const lastLogoRef = useRef("");
+
+  const DEFAULT_TITLE = language === "ar" ? "تاج" : "Tag";
 
   useEffect(() => {
     const title = companyName || DEFAULT_TITLE;
+    const desc = language === "ar" ? `${title} - نظام إدارة متكامل` : `${title} - Integrated Management System`;
     document.title = title;
     document.querySelector('meta[name="apple-mobile-web-app-title"]')?.setAttribute("content", title);
     document.querySelector('meta[property="og:title"]')?.setAttribute("content", title);
     document.querySelector('meta[name="twitter:title"]')?.setAttribute("content", title);
-    document.querySelector('meta[name="description"]')?.setAttribute("content", `${title} - نظام إدارة متكامل`);
-    document.querySelector('meta[property="og:description"]')?.setAttribute("content", `${title} - نظام إدارة متكامل`);
-    document.querySelector('meta[name="twitter:description"]')?.setAttribute("content", `${title} - نظام إدارة متكامل`);
-  }, [companyName]);
+    document.querySelector('meta[name="description"]')?.setAttribute("content", desc);
+    document.querySelector('meta[property="og:description"]')?.setAttribute("content", desc);
+    document.querySelector('meta[name="twitter:description"]')?.setAttribute("content", desc);
+  }, [companyName, language]);
 
   useEffect(() => {
     const src = companyLogo || DEFAULT_FAVICON;

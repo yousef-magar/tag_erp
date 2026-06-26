@@ -141,7 +141,7 @@ function buildSystemContext(): string {
 
     return parts.join("\n") + restrictionNote;
   } catch {
-    return "أنت مساعد ذكي لنظام FeedFlow ERP. أجب باللغة العربية.";
+    return "أنت مساعد ذكي لنظام تاج. أجب باللغة العربية.";
   }
 }
 
@@ -254,8 +254,8 @@ export default function AiAssistant() {
       id: "welcome",
       role: "assistant",
       content: t(
-        "مرحباً! أنا مساعدك الذكي لـ FeedFlow ERP. يمكنني مساعدتك في تحليل بيانات المصنع، المبيعات، المخزون، والإنتاج. كيف يمكنني مساعدتك اليوم؟",
-        "Hello! I'm your FeedFlow ERP AI Assistant. I can help you analyze factory data, sales, inventory, and production. How can I help you today?"
+        "مرحباً! أنا مساعدك الذكي لـ تاج. يمكنني مساعدتك في تحليل بيانات المصنع، المبيعات، المخزون، والإنتاج. كيف يمكنني مساعدتك اليوم؟",
+        "Hello! I'm your تاج AI Assistant. I can help you analyze factory data, sales, inventory, and production. How can I help you today?"
       ),
     },
   ]);
@@ -276,10 +276,7 @@ export default function AiAssistant() {
     t("توقع الشهر القادم", "Next month forecast"),
   ];
 
-  // Auto-save API key on mount — always use latest DEFAULT_KEY
-  useEffect(() => {
-    localStorage.setItem(GEMINI_KEY_STORAGE, DEFAULT_KEY);
-  }, []);
+
 
   const sendMessage = async (text: string) => {
     const trimmed = text.trim();

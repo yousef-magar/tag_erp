@@ -45,8 +45,11 @@ export const useActivityLog = create<ActivityLogState>()(
 
 // ── Auto-logging helpers — call these from stores ──
 export function logActivity(module: string, action: string, ar: string, en: string, relatedId?: string, metadata?: Record<string, any>) {
-  const isSub = localStorage.getItem("feedflow-logged-in-sub-account");
-  const user = isSub ? JSON.parse(isSub).name : "مدير النظام";
+  const subId = localStorage.getItem("feedflow-logged-in-sub-account");
+  let user = "مدير النظام";
+  if (subId) {
+    try { user = JSON.parse(subId).name; } catch { user = subId; }
+  }
   const store = useActivityLog.getState();
   store.addEntry({ module, action, description: ar, arDescription: ar, enDescription: en, user, relatedId, metadata });
 }

@@ -5,7 +5,7 @@ import { useAppStore } from "@/hooks/use-app-store";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Factory, Mail, Lock, User, ArrowRight, AlertCircle, CheckCircle2, Globe, Moon, Sun, ShieldQuestion, KeyRound } from "lucide-react";
+import { Crown, Mail, Lock, User, ArrowRight, AlertCircle, CheckCircle2, Globe, Moon, Sun, ShieldQuestion, KeyRound } from "lucide-react";
 
 export default function SignUp() {
   const [, setLocation] = useLocation();
@@ -79,7 +79,7 @@ export default function SignUp() {
         <div className="flex justify-between items-center mb-4 sm:mb-6 md:absolute md:top-6 md:left-6 md:right-6">
           <div className="flex items-center gap-2 text-primary font-bold text-lg sm:text-xl md:hidden">
             <div className="w-7 h-7 sm:w-8 sm:h-8 rounded bg-primary text-primary-foreground flex items-center justify-center text-sm sm:text-base">F</div>
-            FeedFlow ERP
+            تاج
           </div>
           <div className="flex items-center gap-3 sm:gap-4 mr-auto md:mr-0">
             <button onClick={() => setLanguage(language === "ar" ? "en" : "ar")} className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
@@ -177,9 +177,9 @@ export default function SignUp() {
         <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] rounded-full bg-chart-2/20 blur-[120px]" />
         <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.8, delay: 0.2 }} className="relative z-10 text-center max-w-md lg:max-w-lg">
           <div className="w-20 h-20 lg:w-24 lg:h-24 mx-auto bg-primary text-primary-foreground rounded-2xl flex items-center justify-center mb-6 lg:mb-8 shadow-xl shadow-primary/20">
-            <Factory className="w-10 h-10 lg:w-12 lg:h-12" />
+            <Crown className="w-10 h-10 lg:w-12 lg:h-12" />
           </div>
-          <h2 className="text-3xl lg:text-4xl font-bold tracking-tight mb-3 lg:mb-4 text-foreground">FeedFlow ERP <span className="text-primary">AI</span></h2>
+          <h2 className="text-3xl lg:text-4xl font-bold tracking-tight mb-3 lg:mb-4 text-foreground">{t("تاج", "Tag")}</h2>
           <p className="text-lg lg:text-xl text-muted-foreground leading-relaxed">
             {t("أنشئ حساب المدير وابدأ رحلة الإدارة الذكية", "Create an admin account and start your smart management journey")}
           </p>

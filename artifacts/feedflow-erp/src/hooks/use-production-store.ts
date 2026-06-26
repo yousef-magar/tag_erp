@@ -1,7 +1,6 @@
 import { create } from "zustand";
 import { dexieStorage } from "@/lib/dexie-storage";
 import { api } from "@/lib/api";
-import { withSync } from "@/lib/with-sync";
 import { logActivity } from "./use-activity-log";
 
 
@@ -205,64 +204,57 @@ export const useProductionStore = create<ProductionState>((set, get) => ({
   /* ── Orders ── */
   orders: load("ff-orders", DEFAULT_ORDERS),
   addOrder: async (o) => {
-    const created = await withSync(() => api.productionOrders.create(o), "أمر الإنتاج");
-    const saved = created || o;
     set(state => {
-      const updated = [saved, ...state.orders];
+      const updated = [o, ...state.orders];
       save("ff-orders", updated);
       return { orders: updated };
     });
-    logActivity("production", "create", `إنشاء أمر إنتاج: ${saved.productName}`, `New production order: ${saved.productName}`, saved.id);
-    return saved;
+    logActivity("production", "create", `إنشاء أمر إنتاج: ${o.productName}`, `New production order: ${o.productName}`, o.id);
+    api.productionOrders.create(o).catch(() => {});
+    return o;
   },
   updateOrder: async (id, u) => {
-    const updated = await withSync(() => api.productionOrders.update(id, u), "أمر الإنتاج");
-    if (updated) {
-      set(state => {
-        const list = state.orders.map(o => o.id === id ? updated : o);
-        save("ff-orders", list);
-        return { orders: list };
-      });
-    } else {
-      set(state => {
-        const list = state.orders.map(o => o.id === id ? { ...o, ...u } : o);
-        save("ff-orders", list);
-        return { orders: list };
-      });
-    }
+    const existing = get().orders.find(o => o.id === id);
+    const merged = existing ? { ...existing, ...u } : ({ ...u, id } as ProductionOrder);
+    set(state => {
+      const list = state.orders.map(o => o.id === id ? merged : o);
+      save("ff-orders", list);
+      return { orders: list };
+    });
     logActivity("production", "update", `تحديث أمر الإنتاج: ${id}`, `Update production order: ${id}`, id);
-    return updated;
+    api.productionOrders.update(id, u).catch(() => {});
+    return merged;
   },
   deleteOrder: async (id) => {
-    await withSync<any>(() => api.productionOrders.delete(id), "أمر الإنتاج").catch(() => {});
     set(state => {
       const updated = state.orders.filter(o => o.id !== id);
       save("ff-orders", updated);
       return { orders: updated };
     });
     logActivity("production", "delete", `حذف أمر الإنتاج: ${id}`, `Delete production order: ${id}`, id);
+    api.productionOrders.delete(id).catch(() => {});
   },
 
   /* ── Warehouse Configs ── */
   warehouseConfigs: load("ff-warehouses", DEFAULT_WAREHOUSES),
   updateWarehouseConfig: async (id, cfg) => {
-    await withSync(() => api.warehouseConfigs.update(id, cfg), "إعدادات المخزن").catch(() => {});
     set(state => {
       const list = state.warehouseConfigs.map(w => w.id === id ? { ...w, ...cfg } : w);
       save("ff-warehouses", list);
       return { warehouseConfigs: list };
     });
     logActivity("settings", "update", `تحديث المخزن: ${id}`, `Update warehouse: ${id}`, id);
+    api.warehouseConfigs.update(id, cfg).catch(() => {});
   },
   addWarehouseConfig: async (cfg) => {
-    const created = await withSync(() => api.warehouseConfigs.create(cfg), "المخزن");
-    const saved = created || cfg;
+    const saved = { ...cfg };
     set(state => {
       const list = [...state.warehouseConfigs, saved];
       save("ff-warehouses", list);
       return { warehouseConfigs: list };
     });
     logActivity("settings", "create", `إضافة مخزن: ${saved.name}`, `Add warehouse: ${saved.name}`);
+    api.warehouseConfigs.create(cfg).catch(() => {});
     return saved;
   },
   setWarehouseConfigs: (cfgs) => { save("ff-warehouses", cfgs); set({ warehouseConfigs: cfgs }); },
@@ -278,22 +270,12 @@ export const useProductionStore = create<ProductionState>((set, get) => ({
   /* ── Inventory ── */
   inventory: load("ff-inventory", DEFAULT_INVENTORY),
   addInventoryItem: async (item) => {
-    const created = await withSync(() => api.inventory.create(item), "المخزون");
-    const savedItem = created || { ...item, id: item.id || `INV-${Date.now()}` };
-    if (created) {
-      set(state => {
-        const updated = [created, ...state.inventory];
-        save("ff-inventory", updated);
-        return { inventory: updated };
-      });
-    } else {
-      // Fallback: save locally when API is unavailable
-      set(state => {
-        const updated = [savedItem, ...state.inventory];
-        save("ff-inventory", updated);
-        return { inventory: updated };
-      });
-    }
+    const savedItem = { ...item, id: item.id || `INV-${Date.now()}` };
+    set(state => {
+      const updated = [savedItem, ...state.inventory];
+      save("ff-inventory", updated);
+      return { inventory: updated };
+    });
     // Sync to pricing store so the item appears in Pricing & Cost
     const { usePricingStore: ps } = await import("./use-pricing-store");
     ps.getState().ensureInventoryPrices([{
@@ -303,35 +285,29 @@ export const useProductionStore = create<ProductionState>((set, get) => ({
       unit: savedItem.unit,
     }]);
     logActivity("inventory", "create", `إضافة صنف مخزون: ${savedItem.materialName}`, `Add inventory item: ${savedItem.materialName}`, savedItem.id);
+    api.inventory.create(item).catch(() => {});
     return savedItem;
   },
   updateInventoryItem: async (id, updates) => {
-    const updated = await withSync(() => api.inventory.update(Number(id), updates), "المخزون");
-    if (updated) {
-      set(state => {
-        const list = state.inventory.map(i => i.id === id ? updated : i);
-        save("ff-inventory", list);
-        return { inventory: list };
-      });
-    } else {
-      // Fallback: update locally when API is unavailable
-      set(state => {
-        const list = state.inventory.map(i => i.id === id ? { ...i, ...updates } : i);
-        save("ff-inventory", list);
-        return { inventory: list };
-      });
-    }
+    const existing = get().inventory.find(i => i.id === id);
+    const merged = existing ? { ...existing, ...updates } : ({ ...updates, id } as InventoryItem);
+    set(state => {
+      const list = state.inventory.map(i => i.id === id ? merged : i);
+      save("ff-inventory", list);
+      return { inventory: list };
+    });
     logActivity("inventory", "update", `تحديث صنف المخزون: ${id}`, `Update inventory item: ${id}`, id);
-    return updated;
+    api.inventory.update(Number(id), updates).catch(() => {});
+    return merged;
   },
   deleteInventoryItem: async (id) => {
-    await withSync(() => api.inventory.delete(Number(id)), "المخزون").catch(() => {});
     set(state => {
       const updated = state.inventory.filter(i => i.id !== id);
       save("ff-inventory", updated);
       return { inventory: updated };
     });
     logActivity("inventory", "delete", `حذف صنف المخزون`, `Delete inventory item`, id);
+    api.inventory.delete(Number(id)).catch(() => {});
   },
   deleteInventoryItemsBySource: async (source) => {
     set(state => {

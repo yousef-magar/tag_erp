@@ -5,7 +5,7 @@ import { useAppStore } from "@/hooks/use-app-store";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Factory, Lock, Mail, Globe, Moon, Sun, ArrowRight, AlertCircle, UserPlus, ShieldQuestion, CheckCircle2, KeyRound } from "lucide-react";
+import { Crown, Lock, Mail, Globe, Moon, Sun, ArrowRight, AlertCircle, UserPlus, ShieldQuestion, CheckCircle2, KeyRound } from "lucide-react";
 
 export default function Login() {
   const [, setLocation] = useLocation();
@@ -106,7 +106,7 @@ export default function Login() {
         <div className="flex justify-between items-center mb-4 sm:mb-8 md:absolute md:top-6 md:left-6 md:right-6">
           <div className="flex items-center gap-2 text-primary font-bold text-lg sm:text-xl md:hidden">
             <div className="w-7 h-7 sm:w-8 sm:h-8 rounded bg-primary text-primary-foreground flex items-center justify-center text-sm sm:text-base">F</div>
-            FeedFlow ERP
+            تاج
           </div>
           <div className="flex items-center gap-3 sm:gap-4 mr-auto md:mr-0">
             <button onClick={() => setLanguage(language === "ar" ? "en" : "ar")} className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
@@ -288,15 +288,15 @@ export default function Login() {
           className="relative z-10 text-center max-w-md lg:max-w-lg"
         >
           <div className="w-20 h-20 lg:w-24 lg:h-24 mx-auto bg-primary text-primary-foreground rounded-2xl flex items-center justify-center mb-6 lg:mb-8 shadow-xl shadow-primary/20">
-            <Factory className="w-10 h-10 lg:w-12 lg:h-12" />
+            <Crown className="w-10 h-10 lg:w-12 lg:h-12" />
           </div>
           <h2 className="text-3xl lg:text-4xl font-bold tracking-tight mb-3 lg:mb-4 text-foreground">
-            FeedFlow ERP <span className="text-primary">AI</span>
+            {t("تاج", "Tag")}
           </h2>
           <p className="text-lg lg:text-xl text-muted-foreground leading-relaxed">
             {t(
-              "نظام إدارة مصانع الأعلاف الأذكى والأكثر تطوراً. تحكم كامل، دقة متناهية، وقرارات مدعومة بالذكاء الاصطناعي.",
-              "The smartest and most advanced feed factory management system. Full control, ultimate precision, and AI-powered decisions."
+              "نظام إدارة متكامل — الأذكى والأكثر تطوراً. تحكم كامل، دقة متناهية، وقرارات مدعومة بالذكاء الاصطناعي.",
+              "The smartest and most advanced integrated ERP system. Full control, ultimate precision, and AI-powered decisions."
             )}
           </p>
         </motion.div>
