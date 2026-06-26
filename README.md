@@ -1,15 +1,15 @@
 <div align="center">
 
-# 🌾 FeedFlow ERP
+# 👑 Tag ERP (تاج)
 
-### Enterprise Resource Planning for Poultry & Livestock Feed Manufacturing
+### Enterprise Resource Planning — Integrated Management System
 
 **Built by [Yousef Magar](https://github.com/yousefmagar)**
 
 
 ---
 
-*A full-featured, offline-first ERP system powering Al-Nujoom Feed Co. — from raw material intake to final delivery, all in the browser.*
+*A full-featured, offline-first ERP system powering Al-Nujoom Co. — from operations to delivery, all in the browser.*
 
 </div>
 
@@ -17,7 +17,7 @@
 
 ## 📌 Overview
 
-FeedFlow ERP is a **production-grade, browser-based ERP system** designed specifically for feed manufacturing operations. It covers every business process — production scheduling, inventory management, sales, fleet tracking, HR & payroll, accounting, and more — all running **locally without an internet connection** after the first load.
+Tag ERP (تاج) is a **production-grade, browser-based ERP system** covering every business process — production scheduling, inventory management, sales, fleet tracking, HR & payroll, accounting, and more — all running **locally without an internet connection** after the first load.
 
 No cloud lock-in. No monthly fees. Your data never leaves the device.
 
@@ -150,7 +150,7 @@ El-Nujoom Feeds Co/
 
 ## 🔐 Permissions & Security
 
-FeedFlow uses a **3-tier permission model** enforced via the `usePermission()` hook:
+Tag uses a **3-tier permission model** enforced via the `usePermission()` hook:
 
 - **No Access** — module hidden entirely
 - **View Only** — read-only access
@@ -232,6 +232,6 @@ Private — built for Al-Nujoom Feed Co. All rights reserved.
 
 <div align="center">
   
-**FeedFlow ERP v1.0** · Al-Nujoom Feed Co. · Built by Yousef Magar
+**Tag ERP v1.0** · Al-Nujoom Co. · Built by Yousef Magar
 
 </div>
