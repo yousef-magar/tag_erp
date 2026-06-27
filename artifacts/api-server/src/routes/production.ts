@@ -20,9 +20,11 @@ router.put("/production-orders/:id", async (req, res) => {
 });
 
 router.delete("/production-orders/:id", async (req, res) => {
-  await db.delete(workSessionsTable).where(eq(workSessionsTable.orderId, req.params.id));
-  await db.delete(bagEntriesTable).where(eq(bagEntriesTable.orderId, req.params.id));
-  await db.delete(productionOrdersTable).where(eq(productionOrdersTable.id, req.params.id));
+  await db.transaction(async (tx) => {
+    await tx.delete(workSessionsTable).where(eq(workSessionsTable.orderId, req.params.id));
+    await tx.delete(bagEntriesTable).where(eq(bagEntriesTable.orderId, req.params.id));
+    await tx.delete(productionOrdersTable).where(eq(productionOrdersTable.id, req.params.id));
+  });
   res.json({ ok: true });
 });
 

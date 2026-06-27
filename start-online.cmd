@@ -2,13 +2,13 @@
 title FeedFlow ERP - Online Mode
 
 :: Start server in a new window
-start "FeedFlow Server" cmd /c "D:\El-Nujoom Feeds Co\start-server.cmd"
+start "FeedFlow Server" cmd /c "D:\tag_erp\start-server.cmd"
 
 :: Wait for server to start
 timeout /t 4 /nobreak >nul
 
 :: Start tunnel in a new window
-start "FeedFlow Tunnel" cmd /c "D:\El-Nujoom Feeds Co\tunnel.cmd"
+start "FeedFlow Tunnel" cmd /c "D:\tag_erp\tunnel.cmd"
 
 echo.
 echo ============================================

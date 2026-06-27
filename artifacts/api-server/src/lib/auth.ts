@@ -1,7 +1,7 @@
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 
-const JWT_SECRET = process.env.JWT_SECRET || "elnujoom-dev-secret-change-in-production";
+const JWT_SECRET = process.env.JWT_SECRET || "tag-erp-dev-secret-change-in-production";
 const SALT_ROUNDS = 10;
 
 export function hashPassword(password: string): Promise<string> {

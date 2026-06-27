@@ -22,25 +22,29 @@ router.post("/chat", async (req, res) => {
     return;
   }
 
-  const ai = new GoogleGenAI({ apiKey });
+  try {
+    const ai = new GoogleGenAI({ apiKey });
 
-  const history = (messages ?? []).map((m) => ({
-    role: m.role === "assistant" ? "model" : "user",
-    parts: [{ text: m.content }],
-  }));
+    const history = (messages ?? []).map((m) => ({
+      role: m.role === "assistant" ? "model" : "user",
+      parts: [{ text: m.content }],
+    }));
 
-  const response = await ai.models.generateContent({
-    model: "gemini-2.5-flash",
-    contents: [
-      { role: "user", parts: [{ text: SYSTEM_PROMPT }] },
-      { role: "model", parts: [{ text: "حسناً، أنا مساعدك الذكي لـ FeedFlow ERP." }] },
-      ...history,
-      { role: "user", parts: [{ text: userMessage }] },
-    ],
-    config: { maxOutputTokens: 8192 },
-  });
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: [
+        { role: "user", parts: [{ text: SYSTEM_PROMPT }] },
+        { role: "model", parts: [{ text: "حسناً، أنا مساعدك الذكي لـ FeedFlow ERP." }] },
+        ...history,
+        { role: "user", parts: [{ text: userMessage }] },
+      ],
+      config: { maxOutputTokens: 8192 },
+    });
 
-  res.json({ reply: response.text ?? "" });
+    res.json({ reply: response.text ?? "" });
+  } catch (err) {
+    res.status(502).json({ error: "AI service request failed" });
+  }
 });
 
 export default router;

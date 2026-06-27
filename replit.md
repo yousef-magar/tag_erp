@@ -44,4 +44,4 @@ _Populate as you build — sharp edges, "always run X before Y" rules._
 
 - See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details
 
-<!-- $env:PORT=3000; $env:BASE_PATH="/"; Set-Location "D:\El-Nujoom Feeds Co\artifacts\feedflow-erp"; npm run dev -->
+<!-- $env:PORT=3000; $env:BASE_PATH="/"; Set-Location "D:\tag_erp\artifacts\feedflow-erp"; npm run dev -->

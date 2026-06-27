@@ -6,7 +6,6 @@
 
 **Built & Architected by [Yousef Magar](https://github.com/yousefmagar)**
 
-
 ---
 
 *Production system powering **Al-Nujoom Feed Co.** — managing daily operations across production, sales, fleet, HR, and accounting.*
@@ -139,7 +138,7 @@ pnpm run dev
 
 ```powershell
 $env:PORT=3000; $env:BASE_PATH='/'
-Set-Location "D:\El-Nujoom Feeds Co\artifacts\feedflow-erp"
+Set-Location "D:\tag_erp\artifacts\feedflow-erp"
 npx vite --config vite.config.ts --host 0.0.0.0
 ```
 

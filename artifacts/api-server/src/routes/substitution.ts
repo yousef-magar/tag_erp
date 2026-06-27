@@ -32,25 +32,28 @@ router.post("/suggest", async (req, res) => {
     }
 
     const requestId = `SUB-${Date.now()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
-    await db.insert(substitutionRequestsTable).values({
-      requestId,
-      orderId,
-      productId,
-      productName,
-      originalMaterialName: result.suggestions[0]?.originalMaterial ?? "",
-      originalPricePerTon: result.suggestions[0]?.originalPricePerTon?.toString() ?? "0",
-      substituteMaterialName: result.suggestions[0]?.substituteMaterial ?? "",
-      substitutePricePerTon: result.suggestions[0]?.substitutePricePerTon?.toString() ?? "0",
-      substituteAvailableQty: result.suggestions[0]?.substituteAvailableTons?.toString() ?? "0",
-      neededTons: neededTons.toString(),
-      costImpact: result.totalImpact.toString(),
-      newTotalCost: result.totalNewCost.toString(),
-      status: "pending",
-      aiSuggestion: result.suggestions.map(s => `${s.originalMaterial} → ${s.substituteMaterial}`).join("; "),
-    });
+
+    if (result.suggestions.length > 0) {
+      await db.insert(substitutionRequestsTable).values({
+        requestId,
+        orderId,
+        productId,
+        productName,
+        originalMaterialName: result.suggestions[0]?.originalMaterial ?? "",
+        originalPricePerTon: result.suggestions[0]?.originalPricePerTon?.toString() ?? "0",
+        substituteMaterialName: result.suggestions[0]?.substituteMaterial ?? "",
+        substitutePricePerTon: result.suggestions[0]?.substitutePricePerTon?.toString() ?? "0",
+        substituteAvailableQty: result.suggestions[0]?.substituteAvailableTons?.toString() ?? "0",
+        neededTons: neededTons.toString(),
+        costImpact: result.totalImpact.toString(),
+        newTotalCost: result.totalNewCost.toString(),
+        status: "pending",
+        aiSuggestion: result.suggestions.map(s => `${s.originalMaterial} → ${s.substituteMaterial}`).join("; "),
+      });
+    }
 
     res.json({
-      requestId,
+      requestId: result.suggestions.length > 0 ? requestId : undefined,
       ...result,
       hasSuggestions: result.suggestions.length > 0,
       message: result.suggestions.length > 0

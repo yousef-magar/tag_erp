@@ -23,22 +23,12 @@ router.post("/auth/login", async (req, res) => {
       return;
     }
 
-    // Verify password: check passwordHash (bcrypt) first, fall back to plain text password
-    if (user.passwordHash) {
-      const valid = await verifyPassword(password, user.passwordHash);
-      if (!valid) {
-        res.status(401).json({ error: "Invalid credentials" });
-        return;
-      }
-    } else if (user.password) {
-      if (user.password !== password) {
-        res.status(401).json({ error: "Invalid credentials" });
-        return;
-      }
-      // Upgrade: hash the plain password for next time
-      const newHash = await hashPassword(user.password);
-      await db.update(subAccountsTable).set({ passwordHash: newHash }).where(eq(subAccountsTable.id, user.id));
-    } else {
+    if (!user.passwordHash) {
+      res.status(401).json({ error: "Invalid credentials" });
+      return;
+    }
+    const valid = await verifyPassword(password, user.passwordHash);
+    if (!valid) {
       res.status(401).json({ error: "Invalid credentials" });
       return;
     }

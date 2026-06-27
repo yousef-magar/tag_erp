@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { db, activityEntriesTable } from "@workspace/db";
-import { eq, desc, and, like, sql } from "drizzle-orm";
+import { eq, desc, sql } from "drizzle-orm";
+import { authMiddleware } from "../lib/middleware";
 
 const router = Router();
 
@@ -20,7 +21,7 @@ router.post("/activity-log", async (req, res) => {
   res.status(201).json(row[0]);
 });
 
-router.delete("/activity-log", async (_req, res) => {
+router.delete("/activity-log", authMiddleware, async (_req, res) => {
   await db.delete(activityEntriesTable);
   res.json({ ok: true });
 });

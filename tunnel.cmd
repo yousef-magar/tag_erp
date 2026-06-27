@@ -1,8 +1,8 @@
 @echo off
 title FeedFlow ERP - Tunnel
-cd /d "D:\El-Nujoom Feeds Co"
+cd /d "D:\tag_erp"
 
-set "TOOL_DIR=D:\El-Nujoom Feeds Co\.tools"
+set "TOOL_DIR=D:\tag_erp\.tools"
 set "CLOUDFLARED=%TOOL_DIR%\cloudflared.exe"
 
 if not exist "%CLOUDFLARED%" (
@@ -23,7 +23,7 @@ echo   Creating public tunnel to your server...
 echo ============================================
 echo.
 echo  Make sure the server is running first:
-echo    D:\El-Nujoom Feeds Co\start-server.cmd
+echo    D:\tag_erp\start-server.cmd
 echo.
 echo  ^(Keep this window open^)
 echo.

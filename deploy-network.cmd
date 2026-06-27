@@ -1,6 +1,6 @@
 @echo off
 title FeedFlow ERP - Network Deployment
-cd /d "D:\El-Nujoom Feeds Co"
+cd /d "D:\tag_erp"
 
 :: Check prerequisites
 where node >nul 2>nul
@@ -30,7 +30,7 @@ echo.
 echo  Local IP: %LOCAL_IP%
 echo.
 echo  ^> Building frontend...
-cd /d "D:\El-Nujoom Feeds Co\artifacts\feedflow-erp"
+cd /d "D:\tag_erp\artifacts\feedflow-erp"
 set BASE_PATH=/
 set PORT=3000
 call npx vite build --config vite.config.ts 2>&1
@@ -42,7 +42,7 @@ if %errorlevel% neq 0 (
 
 echo.
 echo  ^> Building API server...
-cd /d "D:\El-Nujoom Feeds Co\artifacts\api-server"
+cd /d "D:\tag_erp\artifacts\api-server"
 call node build.mjs 2>&1
 if %errorlevel% neq 0 (
   echo API server build failed!

@@ -1,6 +1,6 @@
 @echo off
 title FeedFlow ERP Server
-cd /d "D:\El-Nujoom Feeds Co"
+cd /d "D:\tag_erp"
 
 :: Detect local IP
 for /f "tokens=2 delims=:" %%a in ('ipconfig ^| findstr /R "^[ ]*IPv4.*192\.168\.\|^[ ]*IPv4.*10\.\|^[ ]*IPv4.*172\."') do (
@@ -34,7 +34,7 @@ echo  Close this window to stop.
 echo ============================================
 echo.
 
-cd /d "D:\El-Nujoom Feeds Co\artifacts\api-server"
+cd /d "D:\tag_erp\artifacts\api-server"
 node --enable-source-maps ".\dist\index.mjs"
 
 pause

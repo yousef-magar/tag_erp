@@ -83,6 +83,7 @@ export function findBestSubstitute(
   inventory: MaterialInfo[],
   neededTons: number,
   excludeIds: string[] = [],
+  originalPricePerTon?: number,
 ): { substitute: MaterialInfo; rationale: string; confidence: number } | null {
   const group = detectGroup(materialName);
   const groupInfo = group ? SUBSTITUTION_GROUPS[group] : null;
@@ -103,12 +104,13 @@ export function findBestSubstitute(
 
   if (candidates.length === 0) return null;
 
-  // Score candidates: prefer sufficient stock, lower price, higher confidence
+  // Score candidates: prefer sufficient stock, lower price relative to original, higher confidence
   const scored = candidates.map(c => {
     const hasEnough = c.availableTons >= neededTons;
     const stockScore = hasEnough ? 100 : (c.availableTons / neededTons) * 50;
-    const priceDiff = c.pricePerTon;
-    const priceScore = Math.max(0, 100 - (priceDiff / 10000) * 10);
+    const origPrice = originalPricePerTon ?? c.pricePerTon;
+    const priceDiff = c.pricePerTon - origPrice;
+    const priceScore = Math.max(0, 100 - Math.abs(priceDiff / 10000) * 10);
     const groupScore = groupInfo ? (groupInfo.priority === 1 ? 100 : 50) : 30;
     const totalScore = stockScore * 2 + priceScore + groupScore;
 
@@ -118,7 +120,8 @@ export function findBestSubstitute(
   scored.sort((a, b) => b.score - a.score);
 
   const best = scored[0];
-  const priceDiff = best.substitute.pricePerTon;
+  const origPrice = originalPricePerTon ?? best.substitute.pricePerTon;
+  const priceDiff = best.substitute.pricePerTon - origPrice;
   const priceWord = priceDiff > 0 ? "أعلى" : "أقل";
 
   let rationale = "";
@@ -136,7 +139,7 @@ export function findBestSubstitute(
   return {
     substitute: best.substitute,
     rationale,
-    confidence: Math.min(95, Math.max(40, confidence)),
+    confidence: Math.min(95, Math.max(5, confidence)),
   };
 }
 
@@ -169,7 +172,7 @@ export function suggestSubstitutions(
       continue;
     }
 
-    const found = findBestSubstitute(ing.material, inventory, needed, [match?.id ?? ""]);
+    const found = findBestSubstitute(ing.material, inventory, needed, [match?.id ?? ""], currentPrice);
     if (!found) {
       totalNewCost += needed * currentPrice;
       continue;

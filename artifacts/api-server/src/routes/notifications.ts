@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { db, notificationsTable } from "@workspace/db";
 import { eq, desc } from "drizzle-orm";
+import { authMiddleware } from "../lib/middleware";
 
 const router = Router();
 
@@ -19,12 +20,12 @@ router.put("/notifications/:id/read", async (req, res) => {
   res.json(row[0]);
 });
 
-router.put("/notifications/read-all", async (_req, res) => {
+router.put("/notifications/read-all", authMiddleware, async (_req, res) => {
   await db.update(notificationsTable).set({ read: true });
   res.json({ ok: true });
 });
 
-router.delete("/notifications", async (_req, res) => {
+router.delete("/notifications", authMiddleware, async (_req, res) => {
   await db.delete(notificationsTable);
   res.json({ ok: true });
 });
