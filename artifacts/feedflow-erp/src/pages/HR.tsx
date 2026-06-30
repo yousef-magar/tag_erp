@@ -361,7 +361,7 @@ export default function HR() {
                         <div className="flex flex-wrap items-center gap-2 p-2.5">
                           <div style={{ backgroundColor: ["#3b82f6", "#10b981", "#f59e0b", "#8b5cf6", "#f43f5e", "#06b6d4", "#f97316", "#6366f1", "#14b8a6", "#ec4899"][i % 10] }}
                             className="w-1 h-8 rounded-full shrink-0" />
-                          <SmartInput value={sh.name} onChange={v => updateShift(sh.id, { name: v })}
+                          <SmartInput field="employee-name" value={sh.name} onChange={v => updateShift(sh.id, { name: v })}
                             className="h-7 text-sm font-bold w-full min-[400px]:w-24 sm:w-28 border-0 px-0 focus-visible:ring-0" extraSuggestions={shifts.map(s => s.name)} />
                           <div className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground bg-muted/40 rounded-md px-2.5 py-1.5">
                             <span className="whitespace-nowrap">{t("بداية", "Start")}</span>
@@ -616,7 +616,7 @@ export default function HR() {
           <div className="space-y-5">
             <div className="space-y-2">
               <Label>{t("الاسم الكامل", "Full Name")}</Label>
-              <SmartInput placeholder={t("اسم الموظف", "Employee name")} value={empName} onChange={setEmpName} extraSuggestions={employees.map(e => e.name)} />
+              <SmartInput field="employee-name" placeholder={t("اسم الموظف", "Employee name")} value={empName} onChange={setEmpName} extraSuggestions={employees.map(e => e.name)} />
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4">
@@ -661,7 +661,7 @@ export default function HR() {
               </div>
               <div className="space-y-2">
                 <Label>{t("المسمى الوظيفي", "Job Title")}</Label>
-                <SmartInput placeholder={t("المسمى الوظيفي", "Job title")} value={empPosition} onChange={setEmpPosition} extraSuggestions={[...new Set(employees.map(e => e.position).filter(Boolean))]} />
+                <SmartInput field="employee-name" placeholder={t("المسمى الوظيفي", "Job title")} value={empPosition} onChange={setEmpPosition} extraSuggestions={[...new Set(employees.map(e => e.position).filter(Boolean))]} />
               </div>
             </div>
 
@@ -792,7 +792,7 @@ export default function HR() {
           <div className="space-y-5">
             <div className="space-y-2">
               <Label>{t("الاسم الكامل", "Full Name")}</Label>
-              <SmartInput value={editName} onChange={setEditName} extraSuggestions={employees.map(e => e.name)} />
+              <SmartInput field="employee-name" value={editName} onChange={setEditName} extraSuggestions={employees.map(e => e.name)} />
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4">
               <div className="space-y-2">
@@ -839,7 +839,7 @@ export default function HR() {
               </div>
               <div className="space-y-2">
                 <Label>{t("المسمى الوظيفي", "Job Title")}</Label>
-                <SmartInput value={editPosition} onChange={setEditPosition} extraSuggestions={[...new Set(employees.map(e => e.position).filter(Boolean))]} />
+                <SmartInput field="employee-name" value={editPosition} onChange={setEditPosition} extraSuggestions={[...new Set(employees.map(e => e.position).filter(Boolean))]} />
               </div>
             </div>
             <div className="space-y-2">

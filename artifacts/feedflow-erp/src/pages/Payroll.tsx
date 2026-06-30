@@ -499,7 +499,7 @@ export default function Payroll() {
         <div className="flex items-center gap-2 bg-card border border-border rounded-xl px-3 py-2 flex-1 max-w-sm">
           <Search className="w-4 h-4 text-muted-foreground" />
           <div className="flex-1">
-            <SmartInput placeholder={t("ابحث باسم أو تليفون...", "Search by name or phone...")} value={searchQ} onChange={setSearchQ}
+            <SmartInput field="employee-name" placeholder={t("ابحث باسم أو تليفون...", "Search by name or phone...")} value={searchQ} onChange={setSearchQ}
               className="bg-transparent text-sm outline-none border-0 p-0 shadow-none focus-visible:ring-0 w-full" extraSuggestions={employees.map(e => e.name)} showSuggestion={false} />
           </div>
         </div>
@@ -993,7 +993,7 @@ export default function Payroll() {
                 <div className="flex items-center gap-2 bg-card border border-border rounded-lg px-3 py-1.5">
                   <Search className="w-4 h-4 text-muted-foreground" />
                   <div className="flex-1">
-                    <SmartInput placeholder={t("اسم الموظف...", "Employee name...")} value={repSearch} onChange={setRepSearch}
+                    <SmartInput field="employee-name" placeholder={t("اسم الموظف...", "Employee name...")} value={repSearch} onChange={setRepSearch}
                       className="bg-transparent text-sm outline-none border-0 p-0 shadow-none focus-visible:ring-0 w-full" extraSuggestions={employees.map(e => e.name)} showSuggestion={false} />
                   </div>
                 </div>

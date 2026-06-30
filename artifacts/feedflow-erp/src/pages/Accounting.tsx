@@ -919,7 +919,7 @@ export default function Accounting() {
               </div>
               {showNewOutCat && (
                 <div className="flex items-center gap-2">
-                  <SmartInput value={newOutCatName} onChange={setNewOutCatName}
+                  <SmartInput field="product-name" value={newOutCatName} onChange={setNewOutCatName}
                     className="h-9 text-sm rounded-lg flex-1" placeholder={t("اسم البند الجديد", "New category name")} extraSuggestions={expenseCategories} autoFocus />
                   <Button type="button" size="sm" className="h-9 rounded-lg shrink-0" disabled={!newOutCatName.trim()}
                     onClick={() => {
@@ -1058,7 +1058,7 @@ export default function Accounting() {
                 <div className="flex items-end gap-2">
                   <div className="flex-1 space-y-1">
                     <Label className="text-[10px] font-semibold">{t("اسم البنك", "Bank Name")}</Label>
-                    <SmartInput value={newBankName} onChange={setNewBankName} extraSuggestions={bankAccounts.map(b => b.name)} className="h-9 text-sm rounded-lg" placeholder={t("مثال: بنك مصر", "e.g. Banque Misr")} />
+                    <SmartInput field="supplier-name" value={newBankName} onChange={setNewBankName} extraSuggestions={bankAccounts.map(b => b.name)} className="h-9 text-sm rounded-lg" placeholder={t("مثال: بنك مصر", "e.g. Banque Misr")} />
                   </div>
                   <Button type="button" size="sm" className="h-9 rounded-lg gap-1 shrink-0"
                     onClick={() => {
@@ -1078,7 +1078,7 @@ export default function Accounting() {
                       <div key={b.id} className="flex items-center justify-between rounded-xl border border-border/40 bg-card p-3">
                         {editBankId === b.id ? (
                           <div className="flex-1 flex items-center gap-2">
-                            <SmartInput value={editBankName} onChange={setEditBankName} extraSuggestions={bankAccounts.map(b => b.name)} className="h-8 text-sm rounded-lg flex-1" />
+                            <SmartInput field="supplier-name" value={editBankName} onChange={setEditBankName} extraSuggestions={bankAccounts.map(b => b.name)} className="h-8 text-sm rounded-lg flex-1" />
                             <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-emerald-500" onClick={() => {
                               if (!editBankName.trim()) return;
                               updateBankAccount(b.id, { name: editBankName.trim() });
@@ -1130,7 +1130,7 @@ export default function Accounting() {
                   </div>
                   <div className="col-span-1 space-y-1">
                     <Label className="text-[10px] font-semibold">{t("الاسم", "Name")}</Label>
-                    <SmartInput value={newWalName} onChange={setNewWalName} extraSuggestions={walletAccounts.map(w => w.name)} className="h-9 text-sm rounded-lg" placeholder={t("مثال: محفظة الشركة", "Company wallet")} />
+                    <SmartInput field="supplier-name" value={newWalName} onChange={setNewWalName} extraSuggestions={walletAccounts.map(w => w.name)} className="h-9 text-sm rounded-lg" placeholder={t("مثال: محفظة الشركة", "Company wallet")} />
                   </div>
                   <div className="col-span-1 space-y-1">
                     <Label className="text-[10px] font-semibold">{t("الرقم", "Number")}</Label>
@@ -1167,7 +1167,7 @@ export default function Accounting() {
                                 <SelectItem value="instapay">InstaPay</SelectItem>
                               </SelectContent>
                             </Select>
-                            <SmartInput value={editWalName} onChange={setEditWalName} extraSuggestions={walletAccounts.map(w => w.name)} className="h-8 text-sm rounded-lg w-24" />
+                            <SmartInput field="supplier-name" value={editWalName} onChange={setEditWalName} extraSuggestions={walletAccounts.map(w => w.name)} className="h-8 text-sm rounded-lg w-24" />
                             <Input value={editWalIdent} onChange={e => setEditWalIdent(e.target.value)} className="h-8 text-sm rounded-lg w-24" />
                             <Input type="number" min="0" value={editWalMaxLimit} onChange={e => setEditWalMaxLimit(e.target.value)} className="h-8 w-20 text-sm rounded-lg" placeholder={t("حد أقصى", "Max")} />
                             <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-emerald-500" onClick={() => {
@@ -1225,7 +1225,7 @@ export default function Accounting() {
                 <div className="flex items-end gap-2">
                   <div className="flex-1 space-y-1">
                     <Label className="text-[10px] font-semibold">{t("اسم البند", "Category Name")}</Label>
-                    <SmartInput value={newCatName} onChange={setNewCatName} extraSuggestions={expenseCategories} className="h-9 text-sm rounded-lg" placeholder={t("مثال: إيجار", "e.g. Rent")} />
+                    <SmartInput field="product-name" value={newCatName} onChange={setNewCatName} extraSuggestions={expenseCategories} className="h-9 text-sm rounded-lg" placeholder={t("مثال: إيجار", "e.g. Rent")} />
                   </div>
                   <Button type="button" size="sm" className="h-9 rounded-lg gap-1 shrink-0"
                     onClick={() => {

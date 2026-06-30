@@ -27,6 +27,7 @@ const MODULE_LABELS: Record<string, [string, string]> = {
   settings: ["الإعدادات", "Settings"],
   "activity-log": ["سجل النشاط", "Activity Log"],
   profit: ["الأرباح", "Profit"],
+  invoices: ["الفواتير", "Invoices"],
 };
 
 const MODULE_BADGE_COLORS: Record<string, string> = {
@@ -42,6 +43,7 @@ const MODULE_BADGE_COLORS: Record<string, string> = {
   settings: "bg-gray-500/10 text-gray-600 dark:text-gray-400",
   "activity-log": "bg-rose-500/10 text-rose-600 dark:text-rose-400",
   profit: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+  invoices: "bg-violet-500/10 text-violet-600 dark:text-violet-400",
 };
 
 interface SearchResult {

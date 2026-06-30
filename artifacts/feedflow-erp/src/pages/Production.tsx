@@ -14,6 +14,7 @@ import { Label } from "@/components/ui/label";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import SmartInput from "@/components/SmartInput";
+import { getFeedTermSuggestions } from "@/lib/spellcheck";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { motion, AnimatePresence } from "framer-motion";
@@ -1530,10 +1531,10 @@ export default function Production(){
             <div className="flex items-center gap-2.5">
               <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center shrink-0"><Package className="w-4 h-4 text-primary"/></div>
               <div className="flex-1">
-                <SmartInput
+                <SmartInput field="product-name"
                   value={productSearch}
                   onChange={v=>{setProductSearch(v);const p=products.find(pr=>pr.name===v);if(p){setSelProductId(p.id);setFormBagWeight(p.bagWeight||50);setFormBagCount("");setTargetTons("");}else if(!v){setSelProductId("");}}}
-                  extraSuggestions={products.map(p=>p.name)}
+                  extraSuggestions={[...products.map(p=>p.name), ...getFeedTermSuggestions()]}
                   placeholder={t("اختر المنتج...","Select product...")}
                   className="h-9 text-sm"
                 />

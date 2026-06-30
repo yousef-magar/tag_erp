@@ -288,7 +288,7 @@ export default function Marketing() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4">
               <div className="space-y-2">
                 <Label>{t("الاسم", "Name")}</Label>
-                <SmartInput placeholder={t("اسم المندوب", "Marketer name")} value={mName} onChange={setMName} extraSuggestions={marketers.map(m => m.name)} />
+                <SmartInput field="employee-name" placeholder={t("اسم المندوب", "Marketer name")} value={mName} onChange={setMName} extraSuggestions={marketers.map(m => m.name)} />
               </div>
               <div className="space-y-2">
                 <Label>{t("المنطقة", "Region")}</Label>

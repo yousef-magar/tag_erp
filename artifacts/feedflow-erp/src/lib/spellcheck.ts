@@ -79,12 +79,33 @@ export function autoCorrect(text: string): string {
 export function getCompletions(partial: string, extraSources: string[] = []): string[] {
   if (!partial.trim()) return [];
   const lower = partial.trim().toLowerCase();
-  const sources = new Set([...Object.keys(FEED_TERMS), ...Object.values(FEED_TERMS), ...extraSources]);
+  const sources = new Set(extraSources);
   return [...sources].filter(s => s.toLowerCase().includes(lower)).slice(0, 10);
 }
 
 export function getBetterName(name: string): string | null {
   return dictGetBetterName(name);
+}
+
+export function getFeedTermSuggestions(): string[] {
+  return [...Object.keys(FEED_TERMS), ...Object.values(FEED_TERMS)];
+}
+
+export function suggestCorrection(value: string, extraSuggestions: string[]): string | null {
+  if (!value.trim() || extraSuggestions.length === 0) return null;
+  const trimmed = value.trim();
+  const lower = trimmed.toLowerCase();
+  if (extraSuggestions.some(s => s.toLowerCase() === lower)) return null;
+  let best: string | null = null;
+  let bestDist = Infinity;
+  for (const suggestion of extraSuggestions) {
+    const dist = levenshtein(lower, suggestion.toLowerCase());
+    if (dist <= 2 && dist > 0 && dist < bestDist) {
+      best = suggestion;
+      bestDist = dist;
+    }
+  }
+  return best;
 }
 
 export function levenshtein(a: string, b: string): number {

@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import SmartInput from "@/components/SmartInput";
+import { getFeedTermSuggestions } from "@/lib/spellcheck";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Search, DollarSign, TrendingUp, History, Save, X, RefreshCw,
@@ -593,9 +594,9 @@ export default function Pricing() {
                       <PopoverContent align="start" className="w-56 md:w-72 p-2">
                         <div className="relative mb-1.5">
                           <Search className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground pointer-events-none" />
-                          <SmartInput value={groupSearch[group.groupName] || ""} onChange={v => setGroupSearch({ ...groupSearch, [group.groupName]: v })}
+                          <SmartInput field="product-name" value={groupSearch[group.groupName] || ""} onChange={v => setGroupSearch({ ...groupSearch, [group.groupName]: v })}
                             placeholder={t("ابحث عن صنف...", "Search item...")}
-                            extraSuggestions={availableItems}
+                            extraSuggestions={[...availableItems, ...getFeedTermSuggestions()]}
                             className="h-8 text-xs pr-7 w-full" />
                         </div>
                         <div className="max-h-40 md:max-h-44 overflow-y-auto space-y-0.5">
@@ -728,9 +729,9 @@ export default function Pricing() {
           <div className="flex flex-col sm:flex-row gap-2 sm:items-center sm:justify-between">
             <div className="relative flex-1 max-w-full md:max-w-sm">
               <Search className="absolute right-2.5 md:right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 md:w-4 md:h-4 text-muted-foreground pointer-events-none" />
-              <SmartInput value={searchQ} onChange={setSearchQ}
+              <SmartInput field="product-name" value={searchQ} onChange={setSearchQ}
                 placeholder={t("بحث منتج...", "Search product...")}
-                extraSuggestions={productPrices.map(p => p.productName)}
+                extraSuggestions={[...productPrices.map(p => p.productName), ...getFeedTermSuggestions()]}
                 className="h-9 md:h-10 text-xs md:text-sm pr-9 md:pr-10 w-full" />
             </div>
             <div className="flex items-center gap-1.5 md:gap-2 shrink-0 flex-wrap">

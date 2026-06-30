@@ -295,7 +295,7 @@ export default function Attendance() {
         <Card className="p-3">
           <div className="relative">
             <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <SmartInput placeholder={t("بحث بالاسم أو رقم الهاتف", "Search by name or phone")}
+            <SmartInput field="employee-name" placeholder={t("بحث بالاسم أو رقم الهاتف", "Search by name or phone")}
               value={searchQuery} onChange={setSearchQuery} className="pr-10 h-9 text-sm" extraSuggestions={employees.map(e => e.name)} />
           </div>
         </Card>

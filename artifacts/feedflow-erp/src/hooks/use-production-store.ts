@@ -17,7 +17,7 @@ export type ProductionOrder   = {
 };
 export type InventoryItem = {
   id: string; materialName: string; quantity: number; initialQuantity: number; consumedQuantity: number;
-  unit: "ton" | "kg" | "bag";
+  unit: string;
   warehouseId: string; batchNumber: string; productionDate: string;
   expiryDate: string; alertLevel: "normal" | "warning" | "critical";
   type: "raw" | "finished";

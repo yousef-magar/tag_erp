@@ -30,6 +30,7 @@ const DEFAULT_SHORTCUTS: ShortcutDef[] = [
   { key: "k", ctrl: true, alt: true, descriptionAr: "الحسابات الفرعية", descriptionEn: "Sub Accounts" },
   { key: "e", ctrl: true, alt: true, descriptionAr: "الحضور والانصراف", descriptionEn: "Attendance" },
   { key: "y", ctrl: true, alt: true, descriptionAr: "الرواتب", descriptionEn: "Payroll" },
+  { key: "u", ctrl: true, alt: true, descriptionAr: "الفواتير", descriptionEn: "Invoices" },
   // ── Global ──
   { key: "g", ctrl: true, shift: true, descriptionAr: "البحث العام", descriptionEn: "Global Search" },
   { key: "/", ctrl: true, shift: true, descriptionAr: "اختصارات لوحة المفاتيح", descriptionEn: "Keyboard Shortcuts" },
@@ -131,7 +132,7 @@ export function useKeyboardShortcuts(
           KeyF: "/fleet", KeyH: "/hr", KeyR: "/reports", KeyL: "/activity-log",
           KeyG: "/profit", KeyT: "/settings", KeyC: "/customers", KeyO: "/procurement",
           KeyA: "/accounting", KeyM: "/marketing", KeyK: "/sub-accounts",
-          KeyE: "/attendance", KeyY: "/payroll",
+          KeyE: "/attendance", KeyY: "/payroll", KeyU: "/invoices",
         };
         const path = map[e.code];
         if (path) { e.preventDefault(); e.stopPropagation(); navigate(path); return; }

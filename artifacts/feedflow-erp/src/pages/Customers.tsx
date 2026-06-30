@@ -387,7 +387,7 @@ export default function Customers() {
           <div className="space-y-5">
             <div className="space-y-2">
               <Label>{t("اسم العميل / الشركة", "Customer / Company Name")}</Label>
-              <SmartInput placeholder={t("مثال: مزارع الوطنية...", "e.g. Al-Watania Farms...")} value={name} onChange={setName} extraSuggestions={customers.map(c => c.name)} />
+              <SmartInput field="customer-name" placeholder={t("مثال: مزارع الوطنية...", "e.g. Al-Watania Farms...")} value={name} onChange={setName} extraSuggestions={customers.map(c => c.name)} />
             </div>
             <div className="space-y-2">
               <Label>{t("رقم الهاتف", "Phone Number")}</Label>

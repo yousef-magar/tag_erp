@@ -11,6 +11,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import SmartInput from "@/components/SmartInput";
+import { getFeedTermSuggestions } from "@/lib/spellcheck";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { motion, AnimatePresence } from "framer-motion";
 import { usePricingStore } from "@/hooks/use-pricing-store";
@@ -944,7 +945,7 @@ export default function Procurement() {
               </div>
               {poShowAddSup && (
                 <div className="flex items-center gap-2 p-2 rounded-xl bg-muted/30 border border-border/40 mt-2">
-                  <SmartInput value={poNewSupName} onChange={setPoNewSupName} extraSuggestions={suppliers.map(s => s.name)} placeholder={t("اسم المورد", "Supplier name")} className="h-9 text-sm rounded-lg flex-1" />
+                  <SmartInput field="supplier-name" value={poNewSupName} onChange={setPoNewSupName} extraSuggestions={suppliers.map(s => s.name)} placeholder={t("اسم المورد", "Supplier name")} className="h-9 text-sm rounded-lg flex-1" />
                   <Input className="h-9 text-sm rounded-lg w-[130px]" placeholder={t("الهاتف", "Phone")} value={poNewSupPhone} onChange={e => setPoNewSupPhone(e.target.value)} />
                   <Button size="sm" className="h-9 rounded-lg shrink-0"
                     onClick={() => {
@@ -1015,10 +1016,10 @@ export default function Procurement() {
                         </button>
                       )}
                     </div>
-                    <SmartInput
+                    <SmartInput field="material-name"
                       value={item.material}
                       onChange={v => updatePoItem(idx, "material", v)}
-                      extraSuggestions={materialsList}
+                      extraSuggestions={[...materialsList, ...getFeedTermSuggestions()]}
                       placeholder={t("اختر الخامة", "Select material")}
                       className="h-10 rounded-lg text-sm"
                     />
@@ -1322,10 +1323,10 @@ export default function Procurement() {
                         </button>
                       )}
                     </div>
-                    <SmartInput
+                    <SmartInput field="material-name"
                       value={item.material}
                       onChange={v => updateRetItem(idx, "material", v)}
-                      extraSuggestions={materialsList}
+                      extraSuggestions={[...materialsList, ...getFeedTermSuggestions()]}
                       placeholder={t("اختر الخامة", "Select material")}
                       className="h-10 rounded-lg text-sm"
                     />
@@ -1384,7 +1385,7 @@ export default function Procurement() {
           <div className="space-y-4">
             <div className="space-y-1.5">
               <Label className="text-xs font-semibold">{t("الاسم", "Name")}</Label>
-              <SmartInput value={supName} onChange={setSupName} extraSuggestions={suppliers.map(s => s.name)} placeholder={t("اسم المورد", "Supplier name")} className="h-11 rounded-xl" />
+              <SmartInput field="supplier-name" value={supName} onChange={setSupName} extraSuggestions={suppliers.map(s => s.name)} placeholder={t("اسم المورد", "Supplier name")} className="h-11 rounded-xl" />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
@@ -1398,14 +1399,14 @@ export default function Procurement() {
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs font-semibold">{t("العنوان", "Address")}</Label>
-              <SmartInput value={supAddr} onChange={setSupAddr} extraSuggestions={[...new Set(suppliers.filter(s => s.address).map(s => s.address!))]} placeholder={t("العنوان", "Address")} className="h-11 rounded-xl" showSuggestion={false} />
+              <SmartInput field="supplier-name" value={supAddr} onChange={setSupAddr} extraSuggestions={[...new Set(suppliers.filter(s => s.address).map(s => s.address!))]} placeholder={t("العنوان", "Address")} className="h-11 rounded-xl" showSuggestion={false} />
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs font-semibold">{t("الخامة الأساسية", "Main Material")}</Label>
-              <SmartInput
+              <SmartInput field="material-name"
                 value={supMaterial}
                 onChange={setSupMaterial}
-                extraSuggestions={materialsList}
+                extraSuggestions={[...materialsList, ...getFeedTermSuggestions()]}
                 placeholder={t("اختر الخامة", "Select material")}
                 className="h-11 rounded-xl"
               />

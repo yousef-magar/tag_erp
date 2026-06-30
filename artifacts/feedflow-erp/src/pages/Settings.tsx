@@ -12,7 +12,11 @@ import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { Input } from "@/components/ui/input";
 import SmartInput from "@/components/SmartInput";
+import WordsLearnedCard from "@/components/WordsLearnedCard";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import { motion } from "framer-motion";
 
 import type { BackupDirRecord } from "@/lib/dexie-storage";
@@ -99,7 +103,7 @@ const MODULE_LABELS: Record<string, { ar: string; en: string }> = {
 };
 
 export default function Settings() {
-  const { t, sidebarOrder, setSidebarOrder, activeModules, setActiveModules, toggleModule, maxDiscountPercent, discountExceedAllowed, setMaxDiscountPercent, setDiscountExceedAllowed, taxEnabled, taxPercent, setTaxEnabled, setTaxPercent, overdueEnabled, overdueDays, overdueMonths, setOverdueEnabled, setOverdueDays, setOverdueMonths, payrollMonthlyReleaseDay, payrollMonthlyAdvanceDays, payrollWeeklyReleaseDay, payrollWeeklyAdvanceDays, payrollWeekStartDay, payrollMonthStartDay, setPayrollMonthlyReleaseDay, setPayrollMonthlyAdvanceDays, setPayrollWeeklyReleaseDay, setPayrollWeeklyAdvanceDays, setPayrollWeekStartDay, setPayrollMonthStartDay, companyName, companyAddress, companyLogo, setCompanyName, setCompanyAddress, setCompanyLogo, subAccounts, updateSubAccount, printPaperSize, printOrientation, printFontSize, printShowLogo, setPrintPaperSize, setPrintOrientation, setPrintFontSize, setPrintShowLogo, invoicePaperSize, invoiceOrientation, invoiceFontSize, invoiceShowLogo, setInvoicePaperSize, setInvoiceOrientation, setInvoiceFontSize, setInvoiceShowLogo } = useAppStore();
+  const { t, sidebarOrder, setSidebarOrder, activeModules, setActiveModules, toggleModule, maxDiscountPercent, discountExceedAllowed, setMaxDiscountPercent, setDiscountExceedAllowed, taxEnabled, taxPercent, setTaxEnabled, setTaxPercent, overdueEnabled, overdueDays, overdueMonths, setOverdueEnabled, setOverdueDays, setOverdueMonths, payrollMonthlyReleaseDay, payrollMonthlyAdvanceDays, payrollWeeklyReleaseDay, payrollWeeklyAdvanceDays, payrollWeekStartDay, payrollMonthStartDay, setPayrollMonthlyReleaseDay, setPayrollMonthlyAdvanceDays, setPayrollWeeklyReleaseDay, setPayrollWeeklyAdvanceDays, setPayrollWeekStartDay, setPayrollMonthStartDay, companyName, companyAddress, companyLogo, setCompanyName, setCompanyAddress, setCompanyLogo, subAccounts, updateSubAccount, printPaperSize, printOrientation, printFontSize, printShowLogo, setPrintPaperSize, setPrintOrientation, setPrintFontSize, setPrintShowLogo, invoicePaperSize, invoiceOrientation, invoiceFontSize, invoiceShowLogo, setInvoicePaperSize, setInvoiceOrientation, setInvoiceFontSize, setInvoiceShowLogo, productConfig, setProductConfig, language, showSpellChecker, setShowSpellChecker, simpleInvoiceItems, setSimpleInvoiceItems } = useAppStore();
   const logoInputRef = useRef<HTMLInputElement>(null);
   const { warehouseConfigs, updateWarehouseConfig, setWarehouseConfigs } = useProductionStore();
   const [localOrder, setLocalOrder] = useState<string[]>(sidebarOrder);
@@ -123,6 +127,17 @@ export default function Settings() {
 
   const intervalHours = Math.round(getFolderBackupIntervalMs() / 3600000);
   const [folderInterval, setFolderInterval] = useState(intervalHours);
+  const [localProductConfig, setLocalProductConfig] = useState(productConfig);
+  const [pcSaved, setPcSaved] = useState(false);
+  const [newUnitId, setNewUnitId] = useState("");
+  const [newUnitLabelAr, setNewUnitLabelAr] = useState("");
+  const [newUnitLabelEn, setNewUnitLabelEn] = useState("");
+  const [editingUnit, setEditingUnit] = useState<string | null>(null);
+  const [newFieldLabelAr, setNewFieldLabelAr] = useState("");
+  const [newFieldLabelEn, setNewFieldLabelEn] = useState("");
+  const [newFieldType, setNewFieldType] = useState<"text" | "number" | "select">("text");
+  const [newFieldOptions, setNewFieldOptions] = useState("");
+  const [pcMsg, setPcMsg] = useState("");
 
   React.useEffect(() => { loadBackupDirs(); }, []);
 
@@ -250,11 +265,11 @@ export default function Settings() {
           <div className="space-y-4">
             <div className="space-y-2">
               <Label>{t("اسم الشركة", "Company Name")}</Label>
-              <SmartInput value={companyName} onChange={setCompanyName} />
+              <SmartInput field="customer-name" value={companyName} onChange={setCompanyName} />
             </div>
             <div className="space-y-2">
               <Label>{t("العنوان", "Address")}</Label>
-              <SmartInput value={companyAddress} onChange={setCompanyAddress} />
+              <SmartInput field="customer-name" value={companyAddress} onChange={setCompanyAddress} />
             </div>
           </div>
           <div className="space-y-2">
@@ -539,7 +554,7 @@ export default function Settings() {
               <div key={wh.id} className="p-4 border border-border rounded-xl bg-card space-y-3">
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex-1">
-                    <SmartInput
+                    <SmartInput field="warehouse-name"
                       value={wh.name}
                       onChange={v => {
                         const updated = [...localWarehouses];
@@ -697,7 +712,195 @@ export default function Settings() {
           </div>
         )}
       </Card>
-      
+
+      {/* ── Product Settings ── */}
+      <Card className="p-3 sm:p-6">
+        <div className="flex items-center gap-3 mb-6 border-b border-border pb-4">
+          <Package className="w-5 h-5 text-primary" />
+          <div className="flex-1">
+            <h2 className="text-lg font-bold">{t("إعدادات المنتج", "Product Settings")}</h2>
+            <p className="text-sm text-muted-foreground mt-0.5">
+              {t("تكوين وحدات القياس والحقول الإضافية للمنتجات", "Configure units and extra fields for products")}
+            </p>
+          </div>
+          <Button size="sm" className="gap-1.5 h-7 text-xs" onClick={() => { setProductConfig(localProductConfig); setPcSaved(true); setTimeout(() => setPcSaved(false), 2000); }}>
+            {pcSaved ? <>{t("تم ✓", "Saved ✓")}</> : <><Save className="w-3 h-3" />{t("حفظ", "Save")}</>}
+          </Button>
+        </div>
+
+        {/* ── Units ── */}
+        <div className="mb-6">
+          <h3 className="text-sm font-semibold mb-3">{t("وحدات القياس", "Units")}</h3>
+          <div className="space-y-2 mb-3">
+            {localProductConfig.units.map((u, idx) => (
+              <div key={u.id} className="flex items-center gap-2 p-2 border border-border rounded-lg bg-card">
+                <span className="text-xs font-medium w-16">{u.id}</span>
+                <span className="text-xs flex-1">{u.labelAr} / {u.labelEn}</span>
+                <span className="text-[10px] text-muted-foreground">
+                  {u.isBase ? t("الأساس", "Base") : u.conversionToBase ? `1 ${u.id} = ${u.conversionToBase} ${localProductConfig.units.find(x => x.isBase)?.id || ""}` : ""}
+                </span>
+                <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-destructive/60 hover:text-destructive"
+                  onClick={() => setLocalProductConfig(p => ({ ...p, units: p.units.filter((_, i) => i !== idx) }))}>
+                  <Trash2 className="w-3 h-3" />
+                </Button>
+              </div>
+            ))}
+          </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            <Input value={newUnitId} onChange={e => setNewUnitId(e.target.value)} placeholder={t("المعرف", "ID")} className="h-8 text-xs w-20" />
+            <Input value={newUnitLabelAr} onChange={e => setNewUnitLabelAr(e.target.value)} placeholder={t("عربي", "Arabic")} className="h-8 text-xs w-20" />
+            <Input value={newUnitLabelEn} onChange={e => setNewUnitLabelEn(e.target.value)} placeholder={t("إنجليزي", "English")} className="h-8 text-xs w-20" />
+            <Button variant="outline" size="sm" className="h-8 text-xs gap-1" onClick={() => {
+              if (!newUnitId || !newUnitLabelAr) return;
+              setLocalProductConfig(p => ({ ...p, units: [...p.units, { id: newUnitId, labelAr: newUnitLabelAr, labelEn: newUnitLabelEn }] }));
+              setNewUnitId(""); setNewUnitLabelAr(""); setNewUnitLabelEn("");
+            }}>
+              <Plus className="w-3 h-3" />{t("إضافة وحدة", "Add Unit")}
+            </Button>
+          </div>
+          <div className="mt-3 space-y-2">
+            <Label className="text-xs">{t("الوحدة الافتراضية", "Default Unit")}</Label>
+            <Select value={localProductConfig.defaultUnit} onValueChange={v => setLocalProductConfig(p => ({ ...p, defaultUnit: v }))}>
+              <SelectTrigger className="h-9 text-xs w-40"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {localProductConfig.units.map(u => <SelectItem key={u.id} value={u.id}>{u.labelAr} ({u.id})</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        {/* ── Package / Bag settings ── */}
+        <div className="mb-6 border-t border-border/30 pt-4">
+          <h3 className="text-sm font-semibold mb-3">{t("العبوة / الشيكارة", "Package / Bag")}</h3>
+          <div className="space-y-3">
+            <div className="flex items-center justify-between p-2 border border-border rounded-lg">
+              <Label className="text-xs cursor-pointer">{t("إظهار وزن العبوة", "Show Package Weight")}</Label>
+              <Switch checked={localProductConfig.showPackageWeight} onCheckedChange={v => setLocalProductConfig(p => ({ ...p, showPackageWeight: v }))} />
+            </div>
+            {localProductConfig.showPackageWeight && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pr-4">
+                <div className="space-y-1">
+                  <Label className="text-[10px]">{t("تسمية الوزن (عربي)", "Weight Label (Arabic)")}</Label>
+                  <Input value={localProductConfig.packageWeightLabelAr} onChange={e => setLocalProductConfig(p => ({ ...p, packageWeightLabelAr: e.target.value }))} className="h-8 text-xs" />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-[10px]">{t("تسمية الوزن (إنجليزي)", "Weight Label (English)")}</Label>
+                  <Input value={localProductConfig.packageWeightLabelEn} onChange={e => setLocalProductConfig(p => ({ ...p, packageWeightLabelEn: e.target.value }))} className="h-8 text-xs" />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-[10px]">{t("قيم الوزن الافتراضية (مفصولة بفواصل)", "Weight Presets (comma-separated)")}</Label>
+                  <Input value={localProductConfig.packageWeightPresets.join(", ")} onChange={e => setLocalProductConfig(p => ({ ...p, packageWeightPresets: e.target.value.split(",").map(s => parseFloat(s.trim())).filter(n => !isNaN(n)) }))} className="h-8 text-xs" />
+                </div>
+              </div>
+            )}
+            <div className="flex items-center justify-between p-2 border border-border rounded-lg">
+              <Label className="text-xs cursor-pointer">{t("إظهار عدد العبوات", "Show Package Count")}</Label>
+              <Switch checked={localProductConfig.showPackageCount} onCheckedChange={v => setLocalProductConfig(p => ({ ...p, showPackageCount: v }))} />
+            </div>
+            {localProductConfig.showPackageCount && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pr-4">
+                <div className="space-y-1">
+                  <Label className="text-[10px]">{t("تسمية العدد (عربي)", "Count Label (Arabic)")}</Label>
+                  <Input value={localProductConfig.packageCountLabelAr} onChange={e => setLocalProductConfig(p => ({ ...p, packageCountLabelAr: e.target.value }))} className="h-8 text-xs" />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-[10px]">{t("تسمية العدد (إنجليزي)", "Count Label (English)")}</Label>
+                  <Input value={localProductConfig.packageCountLabelEn} onChange={e => setLocalProductConfig(p => ({ ...p, packageCountLabelEn: e.target.value }))} className="h-8 text-xs" />
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* ── Custom Fields ── */}
+        <div className="border-t border-border/30 pt-4">
+          <h3 className="text-sm font-semibold mb-3">{t("الحقول الإضافية", "Custom Fields")}</h3>
+          {localProductConfig.customFields.length > 0 && (
+            <div className="space-y-2 mb-3">
+              {localProductConfig.customFields.map((f, idx) => (
+                <div key={f.id} className="flex items-center gap-2 p-2 border border-border rounded-lg bg-card">
+                  <span className="text-xs font-medium w-20 truncate">{f.labelAr}</span>
+                  <span className="text-[10px] text-muted-foreground">{f.type}</span>
+                  <div className="flex items-center gap-1.5 mr-auto">
+                    <span className="text-[10px] text-muted-foreground">{f.enabled ? t("مفعل", "On") : t("معطل", "Off")}</span>
+                    <Switch checked={f.enabled} onCheckedChange={v => {
+                      const updated = [...localProductConfig.customFields];
+                      updated[idx] = { ...updated[idx], enabled: v };
+                      setLocalProductConfig(p => ({ ...p, customFields: updated }));
+                    }} />
+                  </div>
+                  <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-destructive/60 hover:text-destructive"
+                    onClick={() => setLocalProductConfig(p => ({ ...p, customFields: p.customFields.filter((_, i) => i !== idx) }))}>
+                    <Trash2 className="w-3 h-3" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
+          <div className="flex items-center gap-2 flex-wrap">
+            <Input value={newFieldLabelAr} onChange={e => setNewFieldLabelAr(e.target.value)} placeholder={t("اسم الحقل (عربي)", "Field AR")} className="h-8 text-xs w-24" />
+            <Input value={newFieldLabelEn} onChange={e => setNewFieldLabelEn(e.target.value)} placeholder={t("اسم الحقل (إنجليزي)", "Field EN")} className="h-8 text-xs w-24" />
+            <Select value={newFieldType} onValueChange={v => setNewFieldType(v as any)}>
+              <SelectTrigger className="h-8 text-xs w-20"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="text">{t("نص", "Text")}</SelectItem>
+                <SelectItem value="number">{t("رقم", "Number")}</SelectItem>
+                <SelectItem value="select">{t("اختيار", "Select")}</SelectItem>
+              </SelectContent>
+            </Select>
+            {newFieldType === "select" && (
+              <Input value={newFieldOptions} onChange={e => setNewFieldOptions(e.target.value)} placeholder={t("خيارات بفاصلة", "opt1,opt2")} className="h-8 text-xs w-28" />
+            )}
+            <Button variant="outline" size="sm" className="h-8 text-xs gap-1" onClick={() => {
+              if (!newFieldLabelAr) return;
+              const id = newFieldLabelAr.replace(/\s+/g, "_");
+              setLocalProductConfig(p => ({
+                ...p, customFields: [...p.customFields, {
+                  id, labelAr: newFieldLabelAr, labelEn: newFieldLabelEn || newFieldLabelAr,
+                  type: newFieldType, options: newFieldOptions.split(",").map(s => s.trim()).filter(Boolean),
+                  required: false, enabled: true,
+                }]
+              }));
+              setNewFieldLabelAr(""); setNewFieldLabelEn(""); setNewFieldOptions("");
+            }}>
+              <Plus className="w-3 h-3" />{t("إضافة حقل", "Add Field")}
+            </Button>
+          </div>
+          {pcMsg && <p className="text-xs mt-2 text-emerald-500">{pcMsg}</p>}
+        </div>
+      </Card>
+
+      <WordsLearnedCard t={t} language={language} />
+
+      {/* ── Invoice / Sales Features ── */}
+      <Card className="p-3 sm:p-6">
+        <div className="flex items-center gap-3 mb-6 border-b border-border pb-4">
+          <FileText className="w-5 h-5 text-primary" />
+          <div className="flex-1">
+            <h2 className="text-lg font-bold">{t("خصائص الفواتير", "Invoice Features")}</h2>
+            <p className="text-sm text-muted-foreground mt-0.5">
+              {t("تخصيص شكل إدخال الأصناف وأدوات إضافية", "Customize item entry & extra tools")}
+            </p>
+          </div>
+        </div>
+        <div className="space-y-4">
+          <div className="flex items-center justify-between p-3 border border-border rounded-lg">
+            <div>
+              <Label className="text-xs font-medium cursor-pointer">{t("اقتراح 'هل تقصد؟'", "'Did you mean?' Suggestion")}</Label>
+              <p className="text-[10px] text-muted-foreground mt-0.5">{t("إظهار اقتراح تصحيح إملائي أسفل الحقول النصية في كل النظام", "Show spelling correction suggestion below inputs system-wide")}</p>
+            </div>
+            <Switch checked={showSpellChecker} onCheckedChange={setShowSpellChecker} />
+          </div>
+          <div className="flex items-center justify-between p-3 border border-border rounded-lg">
+            <div>
+              <Label className="text-xs font-medium cursor-pointer">{t("إدخال مبسّط للأصناف", "Simple Item Entry")}</Label>
+              <p className="text-[10px] text-muted-foreground mt-0.5">{t("إظهار الأصناف في الفاتورة كاسم + كمية + سعر فقط", "Show items as name + qty + price only")}</p>
+            </div>
+            <Switch checked={simpleInvoiceItems} onCheckedChange={setSimpleInvoiceItems} />
+          </div>
+        </div>
+      </Card>
+
       <Card className="p-4 sm:p-6 border-destructive/20">
         <div className="flex items-center gap-2 sm:gap-3 mb-4 sm:mb-6 border-b border-destructive/20 pb-3 sm:pb-4">
           <Shield className="w-4 h-4 sm:w-5 sm:h-5 text-destructive" />

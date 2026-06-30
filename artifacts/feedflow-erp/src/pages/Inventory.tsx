@@ -12,6 +12,8 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import SmartInput from "@/components/SmartInput";
+import { getFeedTermSuggestions } from "@/lib/spellcheck";
+import { getUnitLabel, getBaseUnitLabel, convertToBase, getDefaultUnit, getBaseUnit } from "@/lib/product-config";
 import { motion, AnimatePresence } from "framer-motion";
 import { MagItem } from "@/components/ui/magnifier";
 import { Package, PackageCheck, AlertCircle, ArrowRightLeft, Plus, CheckCircle2, Factory, Pencil, Trash2, X, BarChart3, Download } from "lucide-react";
@@ -25,7 +27,7 @@ const itemVariants      = { hidden:{ opacity:0, y:10 }, show:{ opacity:1, y:0 } 
 type TabType = "all" | "raw" | "finished";
 
 export default function Inventory() {
-  const { t }                                         = useAppStore();
+  const { t, productConfig, language }                = useAppStore();
   const { inventory, addInventoryItem, updateInventoryItem, deleteInventoryItem, warehouseConfigs, addWarehouseConfig } = useProductionStore();
   const warehouses = warehouseConfigs;
 
@@ -46,7 +48,7 @@ export default function Inventory() {
   // Add form
   const [newMaterial,  setNewMaterial]  = useState("");
   const [newQty,       setNewQty]       = useState("");
-  const [newUnit,      setNewUnit]      = useState<"ton"|"kg"|"bag">("ton");
+  const [newUnit,      setNewUnit]      = useState<string>(getDefaultUnit(productConfig));
   const [newWarehouse, setNewWarehouse] = useState("");
   const [newExpiry,    setNewExpiry]    = useState("");
   const [newType,      setNewType]      = useState<"raw"|"finished">("raw");
@@ -54,7 +56,7 @@ export default function Inventory() {
   // Edit form
   const [editMaterial,  setEditMaterial]  = useState("");
   const [editQty,       setEditQty]       = useState("");
-  const [editUnit,      setEditUnit]      = useState<"ton"|"kg"|"bag">("ton");
+  const [editUnit,      setEditUnit]      = useState<string>(getDefaultUnit(productConfig));
   const [editWarehouse, setEditWarehouse] = useState("");
   const [editExpiry,    setEditExpiry]    = useState("");
   const [editType,      setEditType]      = useState<"raw"|"finished">("raw");
@@ -123,7 +125,7 @@ export default function Inventory() {
 
   // Bag size config (shared for add & edit) — same style as Production
   const [bagRows, setBagRows] = useState<BagEntry[]>([]);
-  const PRESET_WEIGHTS=[25,50,100];
+  const PRESET_WEIGHTS=productConfig.packageWeightPresets;
   const addPresetBag=(kg:number)=>{if(bagRows.find(b=>b.weightKg===kg))return;setBagRows([...bagRows,{id:Date.now().toString(),weightKg:kg,count:0}]);};
   const addCustomBag=()=>setBagRows([...bagRows,{id:Date.now().toString(),weightKg:0,count:0}]);
   const updBag=(id:string,field:"weightKg"|"count",val:number)=>setBagRows(bagRows.map(b=>b.id===id?{...b,[field]:Math.max(0,val)}:b));
@@ -135,7 +137,7 @@ export default function Inventory() {
   const [transferItem,    setTransferItem]    = useState("");
   const [toWarehouse,     setToWarehouse]     = useState("");
   const [transferQty,     setTransferQty]     = useState("");
-  const [transferUnit,    setTransferUnit]    = useState<"ton"|"kg"|"bag">("ton");
+  const [transferUnit,    setTransferUnit]    = useState<string>(getDefaultUnit(productConfig));
 
   // Report state
   const [reportOpen, setReportOpen] = useState(false);
@@ -248,8 +250,8 @@ export default function Inventory() {
   const critCount     = inventory.filter(i => i.alertLevel === "critical").length;
 
   // KPI hover details
-  const rawTons = inventory.filter(i=>i.type==="raw").reduce((s,i)=>s+(i.unit==="ton"?i.quantity:i.unit==="kg"?i.quantity/1000:i.quantity/20),0);
-  const finTons = inventory.filter(i=>i.type==="finished").reduce((s,i)=>s+(i.unit==="ton"?i.quantity:i.unit==="kg"?i.quantity/1000:i.quantity/20),0);
+  const rawTons = inventory.filter(i=>i.type==="raw").reduce((s,i)=>s+(convertToBase(productConfig, i.quantity, i.unit)),0);
+  const finTons = inventory.filter(i=>i.type==="finished").reduce((s,i)=>s+(convertToBase(productConfig, i.quantity, i.unit)),0);
   const alertItems = inventory.filter(i=>i.alertLevel!=="normal");
 
   // ── Inventory Report ──
@@ -264,8 +266,8 @@ export default function Inventory() {
       return true;
     });
     const rptTotalItems = reportItems.length;
-    const rptRaw = reportItems.filter(i => i.type === "raw").reduce((s, i) => s + (i.unit === "ton" ? i.quantity : i.unit === "kg" ? i.quantity / 1000 : i.quantity / 20), 0);
-    const rptFinished = reportItems.filter(i => i.type === "finished").reduce((s, i) => s + (i.unit === "ton" ? i.quantity : i.unit === "kg" ? i.quantity / 1000 : i.quantity / 20), 0);
+    const rptRaw = reportItems.filter(i => i.type === "raw").reduce((s, i) => s + (convertToBase(productConfig, i.quantity, i.unit)), 0);
+    const rptFinished = reportItems.filter(i => i.type === "finished").reduce((s, i) => s + (convertToBase(productConfig, i.quantity, i.unit)), 0);
     const rptCrit = reportItems.filter(i => i.alertLevel === "critical");
     const rptWarn = reportItems.filter(i => i.alertLevel === "warning");
     const { companyName, companyLogo, companyAddress } = useAppStore.getState();
@@ -346,7 +348,7 @@ export default function Inventory() {
           <tr><th>${t("المادة", "Material")}</th><th>${t("المستودع", "Warehouse")}</th><th>${t("الكمية", "Qty")}</th><th>${t("الحالة", "Status")}</th></tr>
           ${rptCrit.map(i => {
             const wh = warehouses.find(w => w.id === i.warehouseId);
-            return `<tr><td><strong>${i.materialName}</strong></td><td>${wh?.name || i.warehouseId}</td><td>${i.quantity} ${i.unit === "ton" ? t("ط", "T") : i.unit === "kg" ? t("كجم", "kg") : t("ش", "bag")}</td><td><span class="badge badge-red">${t("حرج", "Critical")}</span></td></tr>`;
+            return `<tr><td><strong>${i.materialName}</strong></td><td>${wh?.name || i.warehouseId}</td><td>${i.quantity} ${getUnitLabel(productConfig, i.unit, language)}</td><td><span class="badge badge-red">${t("حرج", "Critical")}</span></td></tr>`;
           }).join("")}
         </table>` : ""}
         ${rptWarn.length > 0 ? `
@@ -354,7 +356,7 @@ export default function Inventory() {
           <tr><th>${t("المادة", "Material")}</th><th>${t("المستودع", "Warehouse")}</th><th>${t("الكمية", "Qty")}</th><th>${t("الحالة", "Status")}</th></tr>
           ${rptWarn.map(i => {
             const wh = warehouses.find(w => w.id === i.warehouseId);
-            return `<tr><td>${i.materialName}</td><td>${wh?.name || i.warehouseId}</td><td>${i.quantity} ${i.unit === "ton" ? t("ط", "T") : i.unit === "kg" ? t("كجم", "kg") : t("ش", "bag")}</td><td><span class="badge badge-amber">${t("تحذير", "Warning")}</span></td></tr>`;
+            return `<tr><td>${i.materialName}</td><td>${wh?.name || i.warehouseId}</td><td>${i.quantity} ${getUnitLabel(productConfig, i.unit, language)}</td><td><span class="badge badge-amber">${t("تحذير", "Warning")}</span></td></tr>`;
           }).join("")}
         </table>` : ""}
       </div>` : ""}
@@ -367,7 +369,7 @@ export default function Inventory() {
             const wh = warehouses.find(w => w.id === i.warehouseId);
             const st = i.alertLevel === "critical" ? `<span class="badge badge-red">${t("حرج", "Critical")}</span>` : i.alertLevel === "warning" ? `<span class="badge badge-amber">${t("تحذير", "Warning")}</span>` : `<span class="badge badge-green">${t("طبيعي", "Normal")}</span>`;
             const tp = i.type === "raw" ? t("خام", "Raw") : t("منتج", "Finished");
-            return `<tr><td style="font-weight:600">${i.materialName}</td><td>${tp}</td><td>${wh?.name || i.warehouseId}</td><td>${i.quantity} ${i.unit === "ton" ? t("ط", "T") : i.unit === "kg" ? t("كجم", "kg") : t("ش", "bag")}</td><td>${i.batchNumber}</td><td>${fmtDate(i.expiryDate)}</td><td>${st}</td></tr>`;
+            return `<tr><td style="font-weight:600">${i.materialName}</td><td>${tp}</td><td>${wh?.name || i.warehouseId}</td><td>${i.quantity} ${getUnitLabel(productConfig, i.unit, language)}</td><td>${i.batchNumber}</td><td>${fmtDate(i.expiryDate)}</td><td>${st}</td></tr>`;
           }).join("")}
         </table>
       </div>` : ""}
@@ -448,7 +450,7 @@ export default function Inventory() {
                         </div>
                         <div className="text-end">
                           <p className="text-sm font-black leading-tight" style={{color:`hsl(${item.hue},70%,50%)`}}>{item.count}</p>
-                          <p className="text-[10px] text-muted-foreground font-mono leading-tight">{item.tons.toFixed(1)}{t("ط","T")}</p>
+                          <p className="text-[10px] text-muted-foreground font-mono leading-tight">{item.tons.toFixed(1)}{getBaseUnitLabel(productConfig, language)}</p>
                         </div>
                       </div>
                       <div className="w-full h-1.5 rounded-full bg-muted/50 overflow-hidden">
@@ -461,7 +463,7 @@ export default function Inventory() {
               })}
               <motion.div initial={{opacity:0}} animate={{opacity:1}} transition={{delay:0.25}} className="flex items-center justify-between px-3 py-2 rounded-xl bg-gradient-to-r from-primary/5 via-primary/10 to-primary/5 border border-primary/10 text-xs font-semibold">
                 <span className="text-muted-foreground">{t("الإجمالي","Total")}</span>
-                <span>{inventory.length} {t("صنف","items")} · {(rawTons+finTons).toFixed(1)}{t("ط","T")}</span>
+                <span>{inventory.length} {t("صنف","items")} · {(rawTons+finTons).toFixed(1)}{getBaseUnitLabel(productConfig, language)}</span>
               </motion.div>
             </div>
           </HoverCardContent>
@@ -482,13 +484,13 @@ export default function Inventory() {
                 <div><p className="text-xs font-bold text-blue-500">{t("تفاصيل الخامات","Raw Materials")}</p><p className="text-[10px] text-muted-foreground">{t("الكميات بالطن","Quantities in tons")}</p></div>
                 <motion.div initial={{scale:0}} animate={{scale:1}} transition={{type:"spring",stiffness:300,damping:15,delay:0.05}} className="text-end">
                   <p className="text-lg font-black text-blue-500 leading-none">{rawTons.toFixed(0)}</p>
-                  <p className="text-[9px] text-muted-foreground leading-tight">{t("طن","T")}</p>
+                  <p className="text-[9px] text-muted-foreground leading-tight">{getBaseUnitLabel(productConfig, language)}</p>
                 </motion.div>
               </div>
             </div>
             <div className="p-2 space-y-1.5 max-h-60 overflow-y-auto">
               {inventory.filter(i=>i.type==="raw").map((i,idx)=>{
-                const tons=i.unit==="ton"?i.quantity:i.unit==="kg"?i.quantity/1000:i.quantity/20;
+                const tons=convertToBase(productConfig, i.quantity, i.unit);
                 const pct=rawTons>0?(tons/rawTons)*100:0;
                 const wh=warehouses.find(w=>w.id===i.warehouseId);
                 const isCritical=i.alertLevel==="critical";
@@ -506,7 +508,7 @@ export default function Inventory() {
                       </div>
                       <div className="flex items-center justify-between text-[10px]">
                         <span className="font-mono font-bold">
-                          <MagItem label={`${tons.toFixed(1)} ${t("طن","T")}`} detail={t("الرصيد","Stock")} big={tons.toFixed(1)} sub={t("طن","T")} className="inline-flex" ringColor={isCritical?"hsl(0,70%,55%)":isWarn?"hsl(40,90%,55%)":"hsl(220,70%,50%)"}>{tons.toFixed(1)} {t("طن","T")}</MagItem>
+                          <MagItem label={`${tons.toFixed(1)} ${getBaseUnitLabel(productConfig, language)}`} detail={t("الرصيد","Stock")} big={tons.toFixed(1)} sub={getBaseUnitLabel(productConfig, language)} className="inline-flex" ringColor={isCritical?"hsl(0,70%,55%)":isWarn?"hsl(40,90%,55%)":"hsl(220,70%,50%)"}>{tons.toFixed(1)} {getBaseUnitLabel(productConfig, language)}</MagItem>
                         </span>
                         <span className="text-muted-foreground font-mono">
                           <MagItem label={i.batchNumber} detail={t("رقم التشغيلة","Batch #")} big={i.batchNumber} sub="" className="inline-flex">{i.batchNumber}</MagItem>
@@ -531,7 +533,7 @@ export default function Inventory() {
             </div>
             <motion.div initial={{opacity:0}} animate={{opacity:1}} transition={{delay:0.2}} className="mx-2 mb-2 px-3 py-2 rounded-xl bg-gradient-to-r from-blue-500/5 via-blue-500/10 to-blue-500/5 border border-blue-500/10 flex justify-between text-xs font-semibold">
               <span className="text-muted-foreground">{t("الإجمالي","Total")}</span>
-              <span className="text-blue-500">{rawTons.toFixed(1)}{t("ط","T")}</span>
+              <span className="text-blue-500">{rawTons.toFixed(1)}{getBaseUnitLabel(productConfig, language)}</span>
             </motion.div>
           </HoverCardContent>
         </HoverCard>
@@ -551,13 +553,13 @@ export default function Inventory() {
                 <div><p className="text-xs font-bold text-emerald-500">{t("تفاصيل المنتجات","Products")}</p><p className="text-[10px] text-muted-foreground">{t("الكميات بالطن","Quantities in tons")}</p></div>
                 <motion.div initial={{scale:0}} animate={{scale:1}} transition={{type:"spring",stiffness:300,damping:15,delay:0.05}} className="text-end">
                   <p className="text-lg font-black text-emerald-500 leading-none">{finTons.toFixed(0)}</p>
-                  <p className="text-[9px] text-muted-foreground leading-tight">{t("طن","T")}</p>
+                  <p className="text-[9px] text-muted-foreground leading-tight">{getBaseUnitLabel(productConfig, language)}</p>
                 </motion.div>
               </div>
             </div>
             <div className="p-2 space-y-1.5 max-h-60 overflow-y-auto">
               {inventory.filter(i=>i.type==="finished").map((i,idx)=>{
-                const tons=i.unit==="ton"?i.quantity:i.unit==="kg"?i.quantity/1000:i.quantity/20;
+                const tons=convertToBase(productConfig, i.quantity, i.unit);
                 const pct=finTons>0?(tons/finTons)*100:0;
                 const wh=warehouses.find(w=>w.id===i.warehouseId);
                 const isCritical=i.alertLevel==="critical";
@@ -575,7 +577,7 @@ export default function Inventory() {
                       </div>
                       <div className="flex items-center justify-between text-[10px]">
                         <span className="font-mono font-bold">
-                          <MagItem label={`${tons.toFixed(1)} ${t("طن","T")}`} detail={t("الرصيد","Stock")} big={tons.toFixed(1)} sub={t("طن","T")} className="inline-flex" ringColor={isCritical?"hsl(0,70%,55%)":isWarn?"hsl(40,90%,55%)":"hsl(160,60%,50%)"}>{tons.toFixed(1)} {t("طن","T")}</MagItem>
+                          <MagItem label={`${tons.toFixed(1)} ${getBaseUnitLabel(productConfig, language)}`} detail={t("الرصيد","Stock")} big={tons.toFixed(1)} sub={getBaseUnitLabel(productConfig, language)} className="inline-flex" ringColor={isCritical?"hsl(0,70%,55%)":isWarn?"hsl(40,90%,55%)":"hsl(160,60%,50%)"}>{tons.toFixed(1)} {getBaseUnitLabel(productConfig, language)}</MagItem>
                         </span>
                         <span className="text-muted-foreground font-mono">
                           <MagItem label={i.batchNumber} detail={t("رقم التشغيلة","Batch #")} big={i.batchNumber} sub="" className="inline-flex">{i.batchNumber}</MagItem>
@@ -601,7 +603,7 @@ export default function Inventory() {
             <motion.div initial={{opacity:0}} animate={{opacity:1}} transition={{delay:0.2}} className="mx-2 mb-2 px-3 py-2 rounded-xl bg-gradient-to-r from-emerald-500/5 via-emerald-500/10 to-emerald-500/5 border border-emerald-500/10 flex justify-between text-xs font-semibold">
               <span className="text-muted-foreground">{t("الإجمالي","Total")}</span>
               <span className="text-emerald-500">
-                <MagItem label={`${finTons.toFixed(1)} ${t("ط","T")}`} detail={t("الإجمالي","Total")} big={finTons.toFixed(1)} sub={t("ط","T")} className="inline-flex" ringColor="hsl(160,60%,50%)">{finTons.toFixed(1)} {t("ط","T")}</MagItem>
+                <MagItem label={`${finTons.toFixed(1)} ${getBaseUnitLabel(productConfig, language)}`} detail={t("الإجمالي","Total")} big={finTons.toFixed(1)} sub={getBaseUnitLabel(productConfig, language)} className="inline-flex" ringColor="hsl(160,60%,50%)">{finTons.toFixed(1)} {getBaseUnitLabel(productConfig, language)}</MagItem>
               </span>
             </motion.div>
           </HoverCardContent>
@@ -632,7 +634,7 @@ export default function Inventory() {
             <div className="p-2 space-y-1.5 max-h-60 overflow-y-auto">
               {alertItems.length===0&&<p className="text-xs text-muted-foreground text-center py-4">{t("جميع الأصناف طبيعية","All items are healthy")}</p>}
               {alertItems.map((i,idx)=>{
-                const tons=i.unit==="ton"?i.quantity:i.unit==="kg"?i.quantity/1000:i.quantity/20;
+                const tons=convertToBase(productConfig, i.quantity, i.unit);
                 const wh=warehouses.find(w=>w.id===i.warehouseId);
                 const isCritical=i.alertLevel==="critical";
                 return(
@@ -651,7 +653,7 @@ export default function Inventory() {
                       </div>
                       <div className="flex items-center justify-between text-[10px]">
                         <span className="font-mono font-bold">
-                          <MagItem label={`${tons.toFixed(1)} ${t("طن","T")}`} detail={t("الرصيد","Stock")} big={tons.toFixed(1)} sub={t("طن","T")} className="inline-flex" ringColor={isCritical?"hsl(0,70%,55%)":"hsl(40,90%,55%)"}>{tons.toFixed(1)} {t("طن","T")}</MagItem>
+                          <MagItem label={`${tons.toFixed(1)} ${getBaseUnitLabel(productConfig, language)}`} detail={t("الرصيد","Stock")} big={tons.toFixed(1)} sub={getBaseUnitLabel(productConfig, language)} className="inline-flex" ringColor={isCritical?"hsl(0,70%,55%)":"hsl(40,90%,55%)"}>{tons.toFixed(1)} {getBaseUnitLabel(productConfig, language)}</MagItem>
                         </span>
                         <span className="text-muted-foreground font-mono">
                           <MagItem label={i.batchNumber} detail={t("رقم التشغيلة","Batch #")} big={i.batchNumber} sub="" className="inline-flex">{i.batchNumber}</MagItem>
@@ -730,7 +732,7 @@ export default function Inventory() {
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="font-bold text-sm">{totalQty}</span>
-                    <span className="text-[10px] text-muted-foreground">{first.unit === "ton" ? t("ط", "T") : first.unit === "kg" ? t("كجم", "kg") : t("ش", "bag")}</span>
+                    <span className="text-[10px] text-muted-foreground">{getUnitLabel(productConfig, first.unit, language)}</span>
                   </div>
                   <div className="space-y-1">
                     {items.map(sub => {
@@ -743,7 +745,7 @@ export default function Inventory() {
                           </div>
                           <div className="flex items-center gap-2 shrink-0">
                             <span className="font-mono font-bold text-foreground/70">{sub.quantity}</span>
-                            <span className="text-[8px]">{sub.unit === "ton" ? t("ط", "T") : sub.unit === "kg" ? t("كجم", "kg") : t("ش", "bag")}</span>
+                            <span className="text-[8px]">{getUnitLabel(productConfig, sub.unit, language)}</span>
                             {editMode && (
                               <>
                                 <button onClick={(e) => { e.stopPropagation(); openEdit(sub); }} className="text-muted-foreground/30 hover:text-primary transition-colors">
@@ -811,7 +813,7 @@ export default function Inventory() {
                         </td>
                         <td className="px-4 py-3">
                           <span className="font-bold text-sm">{totalQty}</span>
-                          <span className="text-muted-foreground/70 text-[10px] ms-1">{first.unit==="ton"?t("ط","T"):first.unit==="kg"?t("كجم","kg"):t("ش","bag")}</span>
+                          <span className="text-muted-foreground/70 text-[10px] ms-1">{getUnitLabel(productConfig, first.unit, language)}</span>
                           {/* Per-warehouse breakdown */}
                           <div className="mt-1 space-y-0.5">
                             {items.map(sub=>{
@@ -821,7 +823,7 @@ export default function Inventory() {
                                   <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{background:sub.alertLevel==="critical"?"hsl(0,70%,55%)":sub.alertLevel==="warning"?"hsl(40,90%,55%)":"hsl(160,60%,50%)"}}/>
                                   <span className="truncate max-w-[80px]">{wh?.name||sub.warehouseId}</span>
                                   <span className="font-mono font-bold text-foreground/70">{sub.quantity}</span>
-                                  <span className="text-[8px]">{sub.unit==="ton"?t("ط","T"):sub.unit==="kg"?t("كجم","kg"):t("ش","bag")}</span>
+                                  <span className="text-[8px]">{getUnitLabel(productConfig, sub.unit, language)}</span>
                                   {editMode&&<>
                                     <button onClick={(e)=>{e.stopPropagation();openEdit(sub);}} className="ms-auto text-muted-foreground/30 hover:text-primary transition-colors"><Pencil className="w-2.5 h-2.5"/></button>
                                     <button onClick={(e)=>{e.stopPropagation();handleDeleteItem(sub.id);}} className="text-muted-foreground/30 hover:text-destructive transition-colors"><Trash2 className="w-2.5 h-2.5"/></button>
@@ -887,21 +889,22 @@ export default function Inventory() {
                 ))}
               </div>
             </div>
-            <div className="space-y-2"><Label>{t("اسم المادة","Material Name")}</Label><SmartInput value={newMaterial} onChange={setNewMaterial} extraSuggestions={[...new Set(inventory.map(i=>i.materialName))]} placeholder={t("مثال: ذرة صفراء...","e.g. Yellow Corn...")} data-testid="input-inventory-material"/></div>
+            <div className="space-y-2"><Label>{t("اسم المادة","Material Name")}</Label><SmartInput field="material-name" value={newMaterial} onChange={setNewMaterial} extraSuggestions={[...new Set([...inventory.map(i=>i.materialName), ...getFeedTermSuggestions()])]} placeholder={t("مثال: ذرة صفراء...","e.g. Yellow Corn...")} data-testid="input-inventory-material"/></div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2"><Label>{t("الكمية","Quantity")}</Label><Input type="number" min="0" value={newQty} onChange={e=>setNewQty(e.target.value)} data-testid="input-inventory-qty"/></div>
               <div className="space-y-2">
                 <Label>{t("الوحدة","Unit")}</Label>
-                <Select value={newUnit} onValueChange={v=>setNewUnit(v as "ton"|"kg"|"bag")}>
+                <Select value={newUnit} onValueChange={v=>setNewUnit(v)}>
                   <SelectTrigger><SelectValue/></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="ton">{t("طن","Ton")}</SelectItem>
-                    <SelectItem value="kg">{t("كيلوجرام","Kg")}</SelectItem>
-                    <SelectItem value="bag">{t("شيكارة","Bag")}</SelectItem>
+                    {productConfig.units.map(u => (
+                      <SelectItem key={u.id} value={u.id}>{language === "ar" ? u.labelAr : u.labelEn}</SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
             </div>
+            {productConfig.showPackageWeight && (<>
             {/* ── Bags (optional) — same style as Production ── */}
             <div className="space-y-2">
               <Label className="flex items-center gap-1.5"><PackageCheck className="w-3.5 h-3.5 text-muted-foreground"/>{t("الشكاير (اختياري)","Bags (optional)")}</Label>
@@ -910,7 +913,7 @@ export default function Inventory() {
                 {PRESET_WEIGHTS.map(kg=>(
                   <button key={kg} type="button" onClick={()=>addPresetBag(kg)} disabled={!!bagRows.find(b=>b.weightKg===kg)}
                     className="px-2.5 py-1 rounded-lg border text-xs font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed bg-muted/50 hover:bg-primary/10 hover:border-primary/40 hover:text-primary border-border">
-                    {kg} {t("ك","kg")}
+                    {kg} {getUnitLabel(productConfig, "kg", language)}
                   </button>
                 ))}
                 <button type="button" onClick={addCustomBag}
@@ -929,21 +932,21 @@ export default function Inventory() {
                       <div key={b.id} className="grid grid-cols-[1fr_1fr_auto_auto] gap-2 items-center px-3 py-2">
                         <Input type="number" min="1" placeholder={t("الوزن","Weight")} className="h-8 text-xs font-mono" value={b.weightKg||""} onChange={e=>updBag(b.id,"weightKg",+e.target.value)}/>
                         <Input type="number" min="0" placeholder="0" className="h-8 text-xs font-mono" value={b.count||""} onChange={e=>updBag(b.id,"count",+e.target.value)}/>
-                        <span className="text-xs font-medium text-primary text-end whitespace-nowrap">{rowTons>0?`${rowTons%1===0?rowTons:rowTons.toFixed(2)} ${t("ط","T")}`:"—"}</span>
+                        <span className="text-xs font-medium text-primary text-end whitespace-nowrap">{rowTons>0?`${rowTons%1===0?rowTons:rowTons.toFixed(2)} ${getBaseUnitLabel(productConfig, language)}`:"—"}</span>
                         <button type="button" onClick={()=>remBag(b.id)} className="text-muted-foreground/50 hover:text-destructive transition-colors"><X className="w-3.5 h-3.5"/></button>
                       </div>
                     );
                   })}
                   {bagRows.some(b=>b.count>0&&b.weightKg>0)&&(
                     <div className="flex items-center justify-between px-3 py-2 bg-primary/5 text-xs font-semibold">
-                      <span className="text-muted-foreground">{t("الإجمالي:","Total:")} {bagTotal()} {t("شيكارة","bags")}</span>
-                      <span className="text-primary">{bagTons().toFixed(3)} {t("طن","T")}</span>
+                      <span className="text-muted-foreground">{t("الإجمالي:","Total:")} {bagTotal()} {getUnitLabel(productConfig, "bag", language)}</span>
+                      <span className="text-primary">{bagTons().toFixed(3)} {getBaseUnitLabel(productConfig, language)}</span>
                     </div>
                   )}
                 </div>
               )}
             </div>
-
+            </>)}
             <div className="space-y-2">
               <Label>{t("المخزن","Warehouse")}</Label>
               <div className="flex gap-2">
@@ -993,21 +996,22 @@ export default function Inventory() {
                 ))}
               </div>
             </div>
-            <div className="space-y-2"><Label>{t("اسم المادة","Material Name")}</Label><SmartInput value={editMaterial} onChange={setEditMaterial} extraSuggestions={[...new Set(inventory.map(i=>i.materialName))]} placeholder={t("مثال: ذرة صفراء...","e.g. Yellow Corn...")}/></div>
+            <div className="space-y-2"><Label>{t("اسم المادة","Material Name")}</Label><SmartInput field="material-name" value={editMaterial} onChange={setEditMaterial} extraSuggestions={[...new Set([...inventory.map(i=>i.materialName), ...getFeedTermSuggestions()])]} placeholder={t("مثال: ذرة صفراء...","e.g. Yellow Corn...")}/></div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2"><Label>{t("المتبقي","Remaining")}</Label><Input type="number" min="0" value={editQty} onChange={e=>setEditQty(e.target.value)}/></div>
               <div className="space-y-2">
                 <Label>{t("الوحدة","Unit")}</Label>
-                <Select value={editUnit} onValueChange={v=>setEditUnit(v as "ton"|"kg"|"bag")}>
+                <Select value={editUnit} onValueChange={v=>setEditUnit(v)}>
                   <SelectTrigger><SelectValue/></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="ton">{t("طن","Ton")}</SelectItem>
-                    <SelectItem value="kg">{t("كيلوجرام","Kg")}</SelectItem>
-                    <SelectItem value="bag">{t("شيكارة","Bag")}</SelectItem>
+                    {productConfig.units.map(u => (
+                      <SelectItem key={u.id} value={u.id}>{language === "ar" ? u.labelAr : u.labelEn}</SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
             </div>
+            {productConfig.showPackageWeight && (<>
             {/* ── Bags (optional) — same style as Production ── */}
             <div className="space-y-2">
               <Label className="flex items-center gap-1.5"><PackageCheck className="w-3.5 h-3.5 text-muted-foreground"/>{t("الشكاير (اختياري)","Bags (optional)")}</Label>
@@ -1016,7 +1020,7 @@ export default function Inventory() {
                 {PRESET_WEIGHTS.map(kg=>(
                   <button key={kg} type="button" onClick={()=>addPresetBag(kg)} disabled={!!bagRows.find(b=>b.weightKg===kg)}
                     className="px-2.5 py-1 rounded-lg border text-xs font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed bg-muted/50 hover:bg-primary/10 hover:border-primary/40 hover:text-primary border-border">
-                    {kg} {t("ك","kg")}
+                    {kg} {getUnitLabel(productConfig, "kg", language)}
                   </button>
                 ))}
                 <button type="button" onClick={addCustomBag}
@@ -1035,21 +1039,21 @@ export default function Inventory() {
                       <div key={b.id} className="grid grid-cols-[1fr_1fr_auto_auto] gap-2 items-center px-3 py-2">
                         <Input type="number" min="1" placeholder={t("الوزن","Weight")} className="h-8 text-xs font-mono" value={b.weightKg||""} onChange={e=>updBag(b.id,"weightKg",+e.target.value)}/>
                         <Input type="number" min="0" placeholder="0" className="h-8 text-xs font-mono" value={b.count||""} onChange={e=>updBag(b.id,"count",+e.target.value)}/>
-                        <span className="text-xs font-medium text-primary text-end whitespace-nowrap">{rowTons>0?`${rowTons%1===0?rowTons:rowTons.toFixed(2)} ${t("ط","T")}`:"—"}</span>
+                        <span className="text-xs font-medium text-primary text-end whitespace-nowrap">{rowTons>0?`${rowTons%1===0?rowTons:rowTons.toFixed(2)} ${getBaseUnitLabel(productConfig, language)}`:"—"}</span>
                         <button type="button" onClick={()=>remBag(b.id)} className="text-muted-foreground/50 hover:text-destructive transition-colors"><X className="w-3.5 h-3.5"/></button>
                       </div>
                     );
                   })}
                   {bagRows.some(b=>b.count>0&&b.weightKg>0)&&(
                     <div className="flex items-center justify-between px-3 py-2 bg-primary/5 text-xs font-semibold">
-                      <span className="text-muted-foreground">{t("الإجمالي:","Total:")} {bagTotal()} {t("شيكارة","bags")}</span>
-                      <span className="text-primary">{bagTons().toFixed(3)} {t("طن","T")}</span>
+                      <span className="text-muted-foreground">{t("الإجمالي:","Total:")} {bagTotal()} {getUnitLabel(productConfig, "bag", language)}</span>
+                      <span className="text-primary">{bagTons().toFixed(3)} {getBaseUnitLabel(productConfig, language)}</span>
                     </div>
                   )}
                 </div>
               )}
             </div>
-
+            </>)}
             <div className="space-y-2">
               <Label>{t("المخزن","Warehouse")}</Label>
               <Select value={editWarehouse} onValueChange={setEditWarehouse}>
@@ -1079,10 +1083,10 @@ export default function Inventory() {
           <div className="space-y-5">
             <div className="space-y-2">
               <Label>{t("الصنف","Item")}</Label>
-              <SmartInput value={transferItem} onChange={v=>{setTransferItem(v);const item=inventory.find(i=>i.materialName===v);if(item){setTransferUnit(item.unit);}}} extraSuggestions={materialNames} placeholder={t("اختر أو اكتب اسم المادة","Select or type material name")} />
+              <SmartInput field="material-name" value={transferItem} onChange={v=>{setTransferItem(v);const item=inventory.find(i=>i.materialName===v);if(item){setTransferUnit(item.unit);}}} extraSuggestions={[...materialNames, ...getFeedTermSuggestions()]} placeholder={t("اختر أو اكتب اسم المادة","Select or type material name")} />
               {transferItem&&(()=>{
                 const si=inventory.find(i=>i.materialName===transferItem);
-                return si?<p className="text-[11px] text-muted-foreground mt-1">{t("المخزن الحالي","Current warehouse")}: {warehouses.find(w=>w.id===si.warehouseId)?.name||si.warehouseId} · {t("المتوفر","Available")}: {si.quantity} {si.unit==="ton"?t("ط","T"):si.unit==="kg"?t("كجم","kg"):t("شيكارة","bag")}</p>:null;
+                return si?<p className="text-[11px] text-muted-foreground mt-1">{t("المخزن الحالي","Current warehouse")}: {warehouses.find(w=>w.id===si.warehouseId)?.name||si.warehouseId} · {t("المتوفر","Available")}: {si.quantity} {getUnitLabel(productConfig, si.unit, language)}</p>:null;
               })()}
             </div>
             <div className="space-y-2">
@@ -1096,12 +1100,12 @@ export default function Inventory() {
               <div className="space-y-2"><Label>{t("الكمية","Quantity")}</Label><Input type="number" min="1" value={transferQty} onChange={e=>setTransferQty(e.target.value)} data-testid="input-transfer-qty"/></div>
               <div className="space-y-2">
                 <Label>{t("الوحدة","Unit")}</Label>
-                <Select value={transferUnit} onValueChange={v=>setTransferUnit(v as "ton"|"kg"|"bag")}>
+                <Select value={transferUnit} onValueChange={v=>setTransferUnit(v)}>
                   <SelectTrigger><SelectValue/></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="ton">{t("طن","Ton")}</SelectItem>
-                    <SelectItem value="kg">{t("كيلوجرام","Kg")}</SelectItem>
-                    <SelectItem value="bag">{t("شيكارة","Bag")}</SelectItem>
+                    {productConfig.units.map(u => (
+                      <SelectItem key={u.id} value={u.id}>{language === "ar" ? u.labelAr : u.labelEn}</SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -1226,7 +1230,7 @@ export default function Inventory() {
           <div className="space-y-4">
             <div className="space-y-2">
               <Label>{t("اسم المخزن","Warehouse Name")}</Label>
-              <SmartInput value={whNewName} onChange={setWhNewName} extraSuggestions={warehouseConfigs.map(w=>w.name)} placeholder={t("مثلاً: مخزن التبريد","e.g. Cold Storage")} />
+              <SmartInput field="warehouse-name" value={whNewName} onChange={setWhNewName} extraSuggestions={warehouseConfigs.map(w=>w.name)} placeholder={t("مثلاً: مخزن التبريد","e.g. Cold Storage")} />
             </div>
             <div className="flex gap-3">
               <Button className="flex-1" disabled={!whNewName.trim()} onClick={async()=>{

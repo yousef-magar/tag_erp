@@ -15,12 +15,14 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { motion, AnimatePresence } from "framer-motion";
-import { ShoppingCart, FileText, Plus, Download, CheckCircle2, Trash2, X, Search, UserPlus, Package, RotateCcw, Scale, Edit3, ArrowLeftRight, Phone, Hash, Store, CalendarDays, Clock, CalendarRange, AlertTriangle, MapPin, ChevronsUpDown, Check, BarChart3 } from "lucide-react";
+import { ShoppingCart, FileText, Plus, Download, CheckCircle2, Trash2, X, Search, UserPlus, Package, RotateCcw, Scale, Edit3, ArrowLeftRight, Phone, Hash, Store, CalendarDays, Clock, CalendarRange, AlertTriangle, MapPin, ChevronsUpDown, Check, BarChart3, XCircle } from "lucide-react";
 import { toast } from "sonner";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from "@/components/ui/command";
 import { cn, fmtDate } from "@/lib/utils";
 import SmartInput from "@/components/SmartInput";
+import { getUnitLabel, getBaseUnitLabel, getBaseUnit, getDefaultUnit } from "@/lib/product-config";
+import { getFeedTermSuggestions } from "@/lib/spellcheck";
 
 const containerVariants = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.06 } } };
 const itemVariants = { hidden: { opacity: 0, y: 8 }, show: { opacity: 1, y: 0 } };
@@ -29,7 +31,7 @@ const cardVariants = { hidden: { opacity: 0, y: 12, scale: 0.97 }, show: { opaci
 const badgeVariants = { hidden: { opacity: 0, scale: 0.8 }, show: { opacity: 1, scale: 1, transition: { type: "spring" as const, stiffness: 300, damping: 12 } } };
 const fadeSlideUp = { hidden: { opacity: 0, y: 16 }, show: { opacity: 1, y: 0, transition: { type: "spring" as const, stiffness: 100, damping: 14 } } };
 
-type SalesTab = "invoices" | "returns";
+type SalesTab = "invoices" | "returns" | "corrector";
 
 const GOVERNORATES: Record<string, string[]> = {
   "القاهرة": ["وسط البلد", "مصر الجديدة", "مدينة نصر", "المعادي", "التجمع الخامس", "العباسية", "شبرا", "الزمالك", "المهندسين", "الدقي", "حلوان", "المرج"],
@@ -60,7 +62,7 @@ const GOVERNORATES: Record<string, string[]> = {
   "أخرى": ["أخرى"],
 };
 
-const BAG_WEIGHTS = [25, 50, 100];
+const BAG_WEIGHTS_DEFAULT = [25, 50, 100];
 const fmtCurrency = (n: number) => new Intl.NumberFormat("ar-EG", { style: "currency", currency: "EGP", maximumFractionDigits: 0 }).format(n);
 const fmtNum = (n: number) => new Intl.NumberFormat("ar-EG").format(n);
 
@@ -196,7 +198,7 @@ function AnimatedNumber({ value, className }: { value: number; className?: strin
 }
 
 export default function Sales() {
-  const { t, taxPercent, taxEnabled, maxDiscountPercent, bankAccounts, walletAccounts, discountExceedAllowed } = useAppStore();
+  const { t, taxPercent, taxEnabled, maxDiscountPercent, bankAccounts, walletAccounts, discountExceedAllowed, productConfig, language, simpleInvoiceItems } = useAppStore();
   const { can } = usePermission();
   const { inventory, updateInventoryItem, addInventoryItem } = useProductionStore();
   const allProducts = useMemo(() => {
@@ -481,7 +483,7 @@ export default function Sales() {
 
   // ── Print Invoice ──
   const handlePrintInvoice = (inv: SalesInvoice) => {
-    const { companyName, companyLogo, companyAddress, invoicePaperSize, invoiceOrientation, invoiceFontSize, invoiceShowLogo } = useAppStore.getState();
+    const { companyName, companyLogo, companyAddress, invoicePaperSize, invoiceOrientation, invoiceFontSize, invoiceShowLogo, productConfig: printCfg } = useAppStore.getState();
     const cust = customers.find(c => c.id === inv.customerId);
     const nowStr = new Date().toLocaleDateString("ar-EG", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
     const paperSizeMap: Record<string, string> = { A4: "210mm 297mm", A5: "148mm 210mm", A7: "74mm 105mm" };
@@ -534,7 +536,7 @@ export default function Sales() {
       </div>
       <table>
         <tr><th>#</th><th>${t("المنتج", "Product")}</th><th>${t("الكمية", "Qty")}</th><th>${t("الشكاير", "Bags")}</th><th>${t("السعر", "Price")}</th><th>${t("الإجمالي", "Total")}</th></tr>
-        ${inv.items.map((item, i) => `<tr><td>${i + 1}</td><td><strong>${item.productName}</strong></td><td>${item.qtyTons} ${t("طن", "T")}</td><td>${item.bagCount > 0 ? item.bagCount + "×" + item.bagWeight + "kg" : "—"}</td><td>${fmtCurrency(item.pricePerTon)}/${t("ط", "T")}</td><td style="font-weight:600">${fmtCurrency(item.qtyTons * item.pricePerTon)}</td></tr>`).join("")}
+        ${inv.items.map((item, i) => `<tr><td>${i + 1}</td><td><strong>${item.productName}</strong></td><td>${item.qtyTons} ${getBaseUnitLabel(printCfg, language)}</td><td>${item.bagCount > 0 ? item.bagCount + "×" + item.bagWeight + getUnitLabel(printCfg, "kg", language) : "—"}</td><td>${fmtCurrency(item.pricePerTon)}/${getBaseUnitLabel(printCfg, language)}</td><td style="font-weight:600">${fmtCurrency(item.qtyTons * item.pricePerTon)}</td></tr>`).join("")}
       </table>
       <div class="totals">
         <table>
@@ -1564,6 +1566,35 @@ export default function Sales() {
                 <AnimatePresence>
                   {formItems.map((item, i) => (
                     <motion.div key={i} initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, x: -20 }} className="rounded-xl border border-border p-3 space-y-2">
+                      {simpleInvoiceItems ? (
+                        /* ── Simple mode (name + qty + price) ── */
+                        <div className="flex gap-2 items-start">
+                          <div className="flex-1 space-y-2">
+                            <Label className="text-xs">{t("اسم الصنف", "Product")} {i + 1}</Label>
+                            <SmartInput field="product-name"
+                              value={item.productName}
+                              onChange={v => updateItem(i, "productName", v)}
+                              placeholder={t("اسم الصنف...", "Product name...")}
+                              extraSuggestions={[...products.map(p => p.name), ...getFeedTermSuggestions()]}
+                            />
+                          </div>
+                          <div className="w-20 space-y-2">
+                            <Label className="text-xs">{t("الكمية", "Qty")}</Label>
+                            <Input type="number" min={0} value={item.qtyTons || ""} onChange={e => updateItem(i, "qtyTons", Math.max(0, Number(e.target.value)))} />
+                          </div>
+                          <div className="w-24 space-y-2">
+                            <Label className="text-xs">{t("السعر", "Price")}</Label>
+                            <Input type="number" min={0} value={item.pricePerTon || ""} onChange={e => updateItem(i, "pricePerTon", Math.max(0, Number(e.target.value)))} />
+                          </div>
+                          {formItems.length > 1 && (
+                            <Button type="button" variant="ghost" size="sm" className="h-9 w-9 p-0 mt-5 text-destructive" onClick={() => removeItem(i)}>
+                              <XCircle className="w-4 h-4" />
+                            </Button>
+                          )}
+                        </div>
+                      ) : (
+                        /* ── Complex mode (full product search + units + bags) ── */
+                        <>
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                         <div className="space-y-1 sm:col-span-1">
                           <Label className="text-xs text-muted-foreground">{t("المنتج", "Product")}</Label>
@@ -1599,14 +1630,14 @@ export default function Sales() {
                           </Popover>
                         </div>
                         <div className="space-y-1">
-                          <Label className="text-xs text-muted-foreground">{t("الكمية (طن)", "Qty (Tons)")}</Label>
+                          <Label className="text-xs text-muted-foreground">{t("الكمية", "Qty")} ({getBaseUnitLabel(productConfig, language)})</Label>
                           <div className="flex items-center gap-1">
                             <Input type="number" min="0" step="0.001" className="h-8 text-xs" value={item.qtyTons || ""} onChange={e => updateItem(i, "qtyTons", parseFloat(e.target.value) || 0)} />
                             <Scale className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
                           </div>
                         </div>
                         <div className="space-y-1">
-                          <Label className="text-xs text-muted-foreground">{t("السعر للطن", "Price/Ton")}</Label>
+                          <Label className="text-xs text-muted-foreground">{t("السعر", "Price")}/{getBaseUnitLabel(productConfig, language)}</Label>
                           <div className="flex items-center gap-1">
                             <Input type="number" min="0" className="h-8 text-xs flex-1" value={item.pricePerTon || ""} onChange={e => updateItem(i, "pricePerTon", parseFloat(e.target.value) || 0)} />
                             {item.productId && !item.pricePerTon && (
@@ -1639,12 +1670,13 @@ export default function Sales() {
                         </div>
                       </div>
                       <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                        {productConfig.showPackageWeight && (<>
                         <div className="space-y-1">
-                          <Label className="text-xs text-muted-foreground">{t("وزن الشيكارة (كجم)", "Bag Wt (kg)")}</Label>
+                          <Label className="text-xs text-muted-foreground">{t("وزن الشيكارة", "Bag Wt")} ({getUnitLabel(productConfig, "kg", language)})</Label>
                           <div className="flex gap-1">
                             <Input type="number" min="1" className="h-8 w-[72px] text-xs" value={item.bagWeight || ""} onChange={e => { const w = parseInt(e.target.value) || 0; updateItem(i, "bagWeight", w > 0 ? w : 50); }} />
                             <div className="flex gap-0.5">
-                              {BAG_WEIGHTS.map(w => (
+                              {(productConfig.packageWeightPresets || BAG_WEIGHTS_DEFAULT).map(w => (
                                 <motion.button key={w} type="button" layout
                                   whileHover={{ y: -2, boxShadow: "0 3px 8px rgba(0,0,0,0.1)" }}
                                   whileTap={{ scale: 0.9, y: 0 }}
@@ -1657,6 +1689,8 @@ export default function Sales() {
                             </div>
                           </div>
                         </div>
+                        </>)}
+                        {productConfig.showPackageCount && (<>
                         <div className="space-y-1">
                           <Label className="text-xs text-muted-foreground">{t("عدد الشكاير", "Bag Count")}</Label>
                           <Input type="number" min="0" className="h-8 text-xs" value={item.bagCount || ""} onChange={e => updateItem(i, "bagCount", parseInt(e.target.value) || 0)} />
@@ -1665,11 +1699,12 @@ export default function Sales() {
                           <span className="text-xs text-muted-foreground pb-1.5">
                             {item.qtyTons > 0 && item.bagWeight > 0 && (
                               <span className="font-medium text-foreground">
-                                = {fmtNum(Math.round((item.qtyTons * 1000) / item.bagWeight))} {t("شيكارة", "bags")}
+                                = {fmtNum(Math.round((item.qtyTons * 1000) / item.bagWeight))} {getUnitLabel(productConfig, "bag", language)}
                               </span>
                             )}
                           </span>
                         </div>
+                        </>)}
                       </div>
                       {formItems.length > 1 && (
                         <motion.div whileHover={{ y: -1, boxShadow: "0 2px 8px rgba(220,38,38,0.1)" }} whileTap={{ scale: 0.92 }}
@@ -1678,6 +1713,8 @@ export default function Sales() {
                             <Trash2 className="w-3 h-3" />{t("إزالة", "Remove")}
                           </Button>
                         </motion.div>
+                      )}
+                      </>
                       )}
                     </motion.div>
                   ))}
@@ -1934,7 +1971,7 @@ export default function Sales() {
                         </Popover>
                       </div>
                       <div className="space-y-1">
-                        <Label className="text-xs text-muted-foreground">{t("الكمية (طن)", "Qty (Tons)")}</Label>
+                        <Label className="text-xs text-muted-foreground">{t("الكمية", "Qty")} ({getBaseUnitLabel(productConfig, language)})</Label>
                         <div className="flex items-center gap-1">
                           <Input type="number" min="0" step="0.001" className="h-8 text-xs" value={item.qtyTons || ""} onChange={e => setRetItems(prev => prev.map((it, idx) => idx === i ? { ...it, qtyTons: parseFloat(e.target.value) || 0, bagCount: it.bagWeight > 0 ? Math.round((parseFloat(e.target.value) || 0) * 1000 / it.bagWeight) : 0 } : it))} />
                           <Scale className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
@@ -1943,15 +1980,16 @@ export default function Sales() {
                     </div>
                     <div className="grid grid-cols-2 gap-2">
                       <div className="space-y-1">
-                        <Label className="text-xs text-muted-foreground">{t("السعر للطن", "Price/Ton")}</Label>
+                        <Label className="text-xs text-muted-foreground">{t("السعر", "Price")}/{getBaseUnitLabel(productConfig, language)}</Label>
                         <Input type="number" min="0" className="h-8 text-xs" value={item.pricePerTon || ""} onChange={e => setRetItems(prev => prev.map((it, idx) => idx === i ? { ...it, pricePerTon: parseFloat(e.target.value) || 0 } : it))} />
                       </div>
+                      {productConfig.showPackageWeight && (<>
                       <div className="space-y-1">
-                        <Label className="text-xs text-muted-foreground">{t("وزن الشيكارة (كجم)", "Bag Wt (kg)")}</Label>
+                        <Label className="text-xs text-muted-foreground">{t("وزن الشيكارة", "Bag Wt")} ({getUnitLabel(productConfig, "kg", language)})</Label>
                         <div className="flex gap-1">
                           <Input type="number" min="1" className="h-8 w-[72px] text-xs" value={item.bagWeight || ""} onChange={e => { const w = parseInt(e.target.value) || 0; setRetItems(prev => prev.map((it, idx) => idx === i ? { ...it, bagWeight: w > 0 ? w : 50, bagCount: it.qtyTons > 0 ? Math.round((it.qtyTons * 1000) / (w > 0 ? w : 50)) : it.bagCount } : it)); }} />
                           <div className="flex gap-0.5">
-                            {[25, 50, 100].map(w => (
+                            {(productConfig.packageWeightPresets || BAG_WEIGHTS_DEFAULT).map(w => (
                               <motion.button key={w} type="button" layout
                                 whileHover={{ y: -2, boxShadow: "0 3px 8px rgba(0,0,0,0.1)" }}
                                 whileTap={{ scale: 0.9, y: 0 }}
@@ -1964,8 +2002,10 @@ export default function Sales() {
                           </div>
                         </div>
                       </div>
+                      </>)}
                     </div>
                     <div className="grid grid-cols-2 gap-2">
+                      {productConfig.showPackageCount && (<>
                       <div className="space-y-1">
                         <Label className="text-xs text-muted-foreground">{t("عدد الشكاير", "Bag Count")}</Label>
                         <Input type="number" min="0" className="h-8 text-xs" value={item.bagCount || ""} onChange={e => setRetItems(prev => prev.map((it, idx) => idx === i ? { ...it, bagCount: parseInt(e.target.value) || 0, qtyTons: it.bagWeight > 0 ? +(((parseInt(e.target.value) || 0) * it.bagWeight) / 1000).toFixed(3) : 0 } : it))} />
@@ -1974,12 +2014,13 @@ export default function Sales() {
                         <span className="text-xs text-muted-foreground pb-1.5">
                           {item.qtyTons > 0 && item.bagWeight > 0 && (
                             <span className="font-medium text-foreground">
-                              = {fmtNum(Math.round((item.qtyTons * 1000) / item.bagWeight))} {t("شيكارة", "bags")}
+                              = {fmtNum(Math.round((item.qtyTons * 1000) / item.bagWeight))} {getUnitLabel(productConfig, "bag", language)}
                             </span>
                           )}
                         </span>
                       </div>
-                    </div>
+                      </>)}
+                      </div>
                     {retItems.length > 1 && (
                       <motion.div whileHover={{ y: -1, boxShadow: "0 2px 8px rgba(220,38,38,0.1)" }} whileTap={{ scale: 0.92 }}
                         transition={{ type: "spring", stiffness: 250, damping: 22, mass: 0.8 }}>
@@ -2073,9 +2114,9 @@ export default function Sales() {
                 <div key={i} className="rounded-lg border border-border p-3 text-xs space-y-1">
                   <div className="flex justify-between font-semibold"><span>{it.productName}</span><span>{fmtCurrency(it.qtyTons * it.pricePerTon)}</span></div>
                   <div className="text-muted-foreground flex items-center gap-2 flex-wrap">
-                    <span>{it.qtyTons} {t("طن", "T")}</span>
-                    {it.bagCount > 0 && <><span className="opacity-40">|</span><span>{fmtNum(it.bagCount)} {t("شيكارة", "bags")} × {it.bagWeight} {t("كجم", "kg")}</span></>}
-                    <span className="opacity-40">|</span><span>{fmtCurrency(it.pricePerTon)}/{t("ط", "T")}</span>
+                    <span>{it.qtyTons} {getBaseUnitLabel(productConfig, language)}</span>
+                    {it.bagCount > 0 && <><span className="opacity-40">|</span><span>{fmtNum(it.bagCount)} {getUnitLabel(productConfig, "bag", language)} × {it.bagWeight} {getUnitLabel(productConfig, "kg", language)}</span></>}
+                    <span className="opacity-40">|</span><span>{fmtCurrency(it.pricePerTon)}/{getBaseUnitLabel(productConfig, language)}</span>
                   </div>
                 </div>
               ))}
@@ -2138,7 +2179,7 @@ export default function Sales() {
           <div className="space-y-4 pt-1">
             <div className="space-y-2">
               <Label>{t("اسم العميل *", "Customer Name *")}</Label>
-              <SmartInput value={newCustName} onChange={setNewCustName} extraSuggestions={customers.map(c => c.name)} placeholder={t("أدخل الاسم", "Enter name")} />
+              <SmartInput field="customer-name" value={newCustName} onChange={setNewCustName} extraSuggestions={customers.map(c => c.name)} placeholder={t("أدخل الاسم", "Enter name")} />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">

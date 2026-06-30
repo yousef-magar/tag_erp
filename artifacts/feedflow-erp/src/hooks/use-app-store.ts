@@ -142,6 +142,13 @@ export const SUB_ACCOUNT_FEATURES: Record<string, FeatureDef[]> = {
     { id: "activity_log.export", labelAr: "تصدير السجل", labelEn: "Export Activity Log" },
     { id: "activity_log.clear", labelAr: "مسح السجل", labelEn: "Clear Activity Log" },
   ],
+  "/invoices": [
+    { id: "invoices.view", labelAr: "عرض الفواتير", labelEn: "View Invoices" },
+    { id: "invoices.create", labelAr: "إنشاء فاتورة", labelEn: "Create Invoice" },
+    { id: "invoices.edit", labelAr: "تعديل الفاتورة", labelEn: "Edit Invoice" },
+    { id: "invoices.delete", labelAr: "حذف الفاتورة", labelEn: "Delete Invoice" },
+    { id: "invoices.corrector", labelAr: "المصحح اللغوي", labelEn: "Spell Checker" },
+  ],
 };
 
 export interface SubAccount {
@@ -165,15 +172,46 @@ const ALL_MODULE_PATHS = [
   "/", "/production", "/inventory", "/sales", "/customers",
   "/fleet", "/hr", "/attendance", "/payroll", "/marketing", "/accounting",
   "/procurement", "/pricing", "/profit", "/reports", "/ai-assistant", "/settings", "/sub-accounts",
-  "/activity-log",
+  "/activity-log", "/invoices",
 ];
 
 const DEFAULT_SIDEBAR_ORDER = [
   "/", "/production", "/inventory", "/sales", "/customers",
   "/fleet", "/hr", "/attendance", "/payroll", "/marketing", "/accounting",
-  "/procurement", "/pricing", "/profit", "/reports", "/ai-assistant", "/sub-accounts", "/settings",
+  "/procurement", "/pricing", "/profit", "/reports", "/invoices", "/ai-assistant", "/sub-accounts", "/settings",
   "/activity-log"
 ];
+
+export interface ProductUnit {
+  id: string;
+  labelAr: string;
+  labelEn: string;
+  isBase?: boolean;
+  conversionToBase?: number;
+}
+
+export interface ProductCustomField {
+  id: string;
+  labelAr: string;
+  labelEn: string;
+  type: "text" | "number" | "select";
+  options: string[];
+  required: boolean;
+  enabled: boolean;
+}
+
+export interface ProductConfig {
+  units: ProductUnit[];
+  defaultUnit: string;
+  showPackageWeight: boolean;
+  showPackageCount: boolean;
+  packageWeightLabelAr: string;
+  packageWeightLabelEn: string;
+  packageCountLabelAr: string;
+  packageCountLabelEn: string;
+  packageWeightPresets: number[];
+  customFields: ProductCustomField[];
+}
 
 export interface OverdueAlert {
   invoiceId: string;
@@ -291,6 +329,14 @@ interface AppState {
   setInvoiceOrientation: (val: string) => void;
   setInvoiceFontSize: (val: number) => void;
   setInvoiceShowLogo: (val: boolean) => void;
+  // Product config
+  productConfig: ProductConfig;
+  setProductConfig: (config: ProductConfig) => void;
+  // Invoice features
+  showSpellChecker: boolean;
+  setShowSpellChecker: (val: boolean) => void;
+  simpleInvoiceItems: boolean;
+  setSimpleInvoiceItems: (val: boolean) => void;
   // Security questions
   securityQuestions: { q1: string; a1: string; q2: string; a2: string; q3: string; a3: string } | null;
   updateSecurityAnswers: (q1: string, a1: string, q2: string, a2: string, q3: string, a3: string) => void;
@@ -408,6 +454,37 @@ const getInitialInvoiceFontSize = (): number => {
 };
 const getInitialInvoiceShowLogo = (): boolean => {
   return localStorage.getItem("feedflow-invoice-show-logo") !== "false";
+};
+
+const DEFAULT_PRODUCT_CONFIG: ProductConfig = {
+  units: [
+    { id: "ton", labelAr: "طن", labelEn: "Ton", isBase: true },
+    { id: "kg", labelAr: "كجم", labelEn: "Kg", conversionToBase: 1000 },
+    { id: "bag", labelAr: "شيكارة", labelEn: "Bag", conversionToBase: 20 },
+    { id: "piece", labelAr: "قطعة", labelEn: "Piece" },
+    { id: "pair", labelAr: "زوج", labelEn: "Pair" },
+    { id: "dozen", labelAr: "درزن", labelEn: "Dozen" },
+    { id: "meter", labelAr: "متر", labelEn: "Meter" },
+    { id: "liter", labelAr: "لتر", labelEn: "Liter" },
+  ],
+  defaultUnit: "ton",
+  showPackageWeight: true,
+  showPackageCount: true,
+  packageWeightLabelAr: "وزن الشيكارة",
+  packageWeightLabelEn: "Bag Weight",
+  packageCountLabelAr: "عدد الشكاير",
+  packageCountLabelEn: "Bag Count",
+  packageWeightPresets: [25, 50, 100],
+  customFields: [],
+};
+
+const getInitialProductConfig = (): ProductConfig => {
+  try {
+    const saved = localStorage.getItem("feedflow-product-config");
+    if (saved) return JSON.parse(saved);
+  } catch {}
+  localStorage.setItem("feedflow-product-config", JSON.stringify(DEFAULT_PRODUCT_CONFIG));
+  return DEFAULT_PRODUCT_CONFIG;
 };
 
 const getInitialLoggedInSubAccountId = (): string | null => {
@@ -812,6 +889,25 @@ export const useAppStore = create<AppState>((set, get) => ({
   setInvoiceShowLogo: (val) => {
     localStorage.setItem("feedflow-invoice-show-logo", val ? "true" : "false");
     set({ invoiceShowLogo: val });
+  },
+
+  // Invoice features
+  showSpellChecker: (() => localStorage.getItem("feedflow-show-spell-checker") === "true")(),
+  simpleInvoiceItems: (() => localStorage.getItem("feedflow-simple-invoice-items") === "true")(),
+  setShowSpellChecker: (val) => {
+    localStorage.setItem("feedflow-show-spell-checker", val ? "true" : "false");
+    set({ showSpellChecker: val });
+  },
+  setSimpleInvoiceItems: (val) => {
+    localStorage.setItem("feedflow-simple-invoice-items", val ? "true" : "false");
+    set({ simpleInvoiceItems: val });
+  },
+
+  /* ── Product Config ── */
+  productConfig: getInitialProductConfig(),
+  setProductConfig: (config) => {
+    localStorage.setItem("feedflow-product-config", JSON.stringify(config));
+    set({ productConfig: config });
   },
 
   /* ── Security Questions ── */

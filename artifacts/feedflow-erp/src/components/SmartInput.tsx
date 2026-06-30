@@ -1,8 +1,8 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Sparkles } from "lucide-react";
-import { autoCorrect, getCompletions, getBetterName } from "@/lib/spellcheck";
+import { getCompletions, suggestCorrection } from "@/lib/spellcheck";
+import { useAutocompleteStore } from "@/hooks/use-autocomplete-store";
+import { useAppStore } from "@/hooks/use-app-store";
 
 interface SmartInputProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, "value" | "onChange" | "onBlur" | "onKeyDown"> {
   value: string;
@@ -10,32 +10,38 @@ interface SmartInputProps extends Omit<React.InputHTMLAttributes<HTMLInputElemen
   onAutoCorrect?: (value: string) => void;
   extraSuggestions?: string[];
   showSuggestion?: boolean;
+  field?: string;
 }
 
-export default function SmartInput({ value, onChange, onAutoCorrect, extraSuggestions = [], placeholder, className, showSuggestion = true, ...rest }: SmartInputProps) {
+export default function SmartInput({ value, onChange, onAutoCorrect, extraSuggestions = [], placeholder, className, showSuggestion, field, ...rest }: SmartInputProps) {
+  const globalShowSuggestion = useAppStore(s => s.showSpellChecker);
+  const effectiveShowSuggestion = showSuggestion ?? globalShowSuggestion;
   const [options, setOptions] = useState<string[]>([]);
   const [selectedIdx, setSelectedIdx] = useState(-1);
-  const [betterSuggestion, setBetterSuggestion] = useState<string | null>(null);
+  const [correction, setCorrection] = useState<string | null>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
+  const learnWord = useAutocompleteStore(s => s.learnWord);
+  const getSuggestions = useAutocompleteStore(s => s.getSuggestions);
 
   useEffect(() => {
     if (value.trim()) {
-      setOptions(getCompletions(value, extraSuggestions));
-      if (showSuggestion) {
-        setBetterSuggestion(getBetterName(value));
+      const merged = field ? [...new Set([...getSuggestions(value, field), ...getCompletions(value, extraSuggestions)])] : getCompletions(value, extraSuggestions);
+      setOptions(merged);
+      if (effectiveShowSuggestion) {
+        setCorrection(suggestCorrection(value, extraSuggestions));
       }
     } else {
       setOptions([]);
-      setBetterSuggestion(null);
+      setCorrection(null);
     }
     setSelectedIdx(-1);
-  }, [value, extraSuggestions, showSuggestion]);
+  }, [value, extraSuggestions, effectiveShowSuggestion, field, getSuggestions]);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) {
         setOptions([]);
-        setBetterSuggestion(null);
+        setCorrection(null);
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
@@ -58,28 +64,35 @@ export default function SmartInput({ value, onChange, onAutoCorrect, extraSugges
         e.preventDefault();
         onChange(options[selectedIdx]);
         setOptions([]);
-        setBetterSuggestion(null);
+        setCorrection(null);
+        learnWord(options[selectedIdx], field || "");
         return;
       }
-    }
-    if (e.key === "Tab" && betterSuggestion) {
-      e.preventDefault();
-      onChange(betterSuggestion);
-      setBetterSuggestion(null);
-      setOptions([]);
-      onAutoCorrect?.(betterSuggestion);
     }
   };
 
   const handleBlur = () => {
-    if (value.trim()) {
-      const corrected = autoCorrect(value);
-      if (corrected !== value) {
-        onChange(corrected);
-        onAutoCorrect?.(corrected);
+    setTimeout(() => {
+      setOptions([]);
+      if (field && value.trim()) {
+        learnWord(value, field);
       }
-    }
-    setTimeout(() => { setOptions([]); setBetterSuggestion(null); }, 200);
+    }, 200);
+  };
+
+  const applyCorrection = (c: string) => {
+    onChange(c);
+    setCorrection(null);
+    setOptions([]);
+    onAutoCorrect?.(c);
+    if (field) learnWord(c, field);
+  };
+
+  const selectOption = (opt: string) => {
+    onChange(opt);
+    setOptions([]);
+    setCorrection(null);
+    if (field) learnWord(opt, field);
   };
 
   return (
@@ -94,19 +107,15 @@ export default function SmartInput({ value, onChange, onAutoCorrect, extraSugges
           className={className}
           {...rest}
         />
-        {betterSuggestion && showSuggestion && betterSuggestion !== value && (
-          <Button
-            type="button"
-            size="sm"
-            variant="ghost"
-            className="absolute left-1 top-1/2 -translate-y-1/2 h-6 px-1.5 text-[10px] gap-0.5 text-primary hover:text-primary"
-            onMouseDown={e => { e.preventDefault(); onChange(betterSuggestion); setBetterSuggestion(null); setOptions([]); onAutoCorrect?.(betterSuggestion); }}
-            title="اقتراح اسم أفضل"
-          >
-            <Sparkles className="w-3 h-3" />
-          </Button>
-        )}
       </div>
+      {correction && effectiveShowSuggestion && correction !== value && (
+        <div
+          className="mt-1 text-xs text-right text-primary bg-primary/5 border border-primary/20 rounded-lg px-3 py-1.5 cursor-pointer hover:bg-primary/10 transition-colors"
+          onMouseDown={e => { e.preventDefault(); applyCorrection(correction); }}
+        >
+          هل تقصد <strong>{correction}</strong>؟
+        </div>
+      )}
       {options.length > 0 && (
         <div className="absolute z-50 w-full mt-1 rounded-lg border border-border bg-popover shadow-lg max-h-48 overflow-y-auto custom-scrollbar">
           {options.map((opt, i) => (
@@ -116,7 +125,7 @@ export default function SmartInput({ value, onChange, onAutoCorrect, extraSugges
               className={`w-full text-right px-3 py-1.5 text-xs transition-colors hover:bg-muted ${
                 i === selectedIdx ? "bg-muted font-medium" : ""
               }`}
-              onMouseDown={e => { e.preventDefault(); onChange(opt); setOptions([]); setBetterSuggestion(null); }}
+              onMouseDown={e => { e.preventDefault(); selectOption(opt); }}
             >
               {opt}
             </button>

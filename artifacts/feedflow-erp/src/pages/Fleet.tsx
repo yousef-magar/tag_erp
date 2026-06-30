@@ -818,12 +818,12 @@ export default function Fleet() {
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs font-semibold">{t("اسم / موديل المركبة", "Vehicle Name")}</Label>
-              <SmartInput value={vName} onChange={setVName} extraSuggestions={vehicles.map(v => v.name)} placeholder={t("مثال: نقل ثقيل مرسيدس", "e.g. Heavy Truck Mercedes")} className="h-11 rounded-xl" />
+              <SmartInput field="product-name" value={vName} onChange={setVName} extraSuggestions={vehicles.map(v => v.name)} placeholder={t("مثال: نقل ثقيل مرسيدس", "e.g. Heavy Truck Mercedes")} className="h-11 rounded-xl" />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label className="text-xs font-semibold">{t("اسم السائق", "Driver")}</Label>
-                <SmartInput value={vDriver} onChange={setVDriver} extraSuggestions={[...new Set(vehicles.map(v => v.driver))]} placeholder={t("اسم السائق", "Driver name")} className="h-11 rounded-xl" />
+                <SmartInput field="driver-name" value={vDriver} onChange={setVDriver} extraSuggestions={[...new Set(vehicles.map(v => v.driver))]} placeholder={t("اسم السائق", "Driver name")} className="h-11 rounded-xl" />
               </div>
               <div className="space-y-1.5">
                 <Label className="text-xs font-semibold">{t("هاتف السائق", "Driver Phone")}</Label>
@@ -868,7 +868,7 @@ export default function Fleet() {
             {/* Address (shown when at factory without specific address, or with-driver with specific address) */}
             <div className="space-y-1.5">
               <Label className="text-xs font-semibold">{t("العنوان (اختياري)", "Address (optional)")}</Label>
-              <SmartInput value={vAddress} onChange={setVAddress} extraSuggestions={[...new Set(vehicles.filter(v => v.address).map(v => v.address!))]} placeholder={t("مثال: المنطقة الصناعية - قطعة 5", "e.g. Industrial Zone, Block 5")} className="h-11 rounded-xl" />
+              <SmartInput field="driver-name" value={vAddress} onChange={setVAddress} extraSuggestions={[...new Set(vehicles.filter(v => v.address).map(v => v.address!))]} placeholder={t("مثال: المنطقة الصناعية - قطعة 5", "e.g. Industrial Zone, Block 5")} className="h-11 rounded-xl" />
             </div>
             <AnimatePresence mode="wait">
                {addDone ? (
@@ -1178,7 +1178,7 @@ export default function Fleet() {
             </div>
             <div className="space-y-1">
               <Label className="text-xs">{t("التصنيف", "Category")} <span className="text-muted-foreground">({t("اختياري", "optional")})</span></Label>
-              <SmartInput
+              <SmartInput field="product-name"
                 value={expenseCat}
                 onChange={setExpenseCat}
                 placeholder={t("مثال: صيانة", "e.g., Maintenance")}
