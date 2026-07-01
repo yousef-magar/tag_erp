@@ -63,13 +63,13 @@ async function loadAllData() {
       safeFetch(api.notifications.list()),
     ]);
 
-    if (customers && customers.length > 0) useSalesStore.setState({ customers });
-    if (invoices && invoices.length > 0) useSalesStore.setState({ invoices });
-    if (returns && returns.length > 0) useSalesStore.setState({ returns });
-    if (payments && payments.length > 0) useSalesStore.setState({ payments });
-    if (employees && employees.length > 0) useHRStore.setState({ employees });
-    if (shifts && shifts.length > 0) useHRStore.setState({ shifts });
-    if (attendance) {
+    if (customers && customers.length > 0 && useSalesStore.getState().customers.length === 0) useSalesStore.setState({ customers });
+    if (invoices && invoices.length > 0 && useSalesStore.getState().invoices.length === 0) useSalesStore.setState({ invoices });
+    if (returns && returns.length > 0 && useSalesStore.getState().returns.length === 0) useSalesStore.setState({ returns });
+    if (payments && payments.length > 0 && useSalesStore.getState().payments.length === 0) useSalesStore.setState({ payments });
+    if (employees && employees.length > 0 && useHRStore.getState().employees.length === 0) useHRStore.setState({ employees });
+    if (shifts && shifts.length > 0 && useHRStore.getState().shifts.length === 0) useHRStore.setState({ shifts });
+    if (attendance && Object.keys(useHRStore.getState().attendance).length === 0) {
       const attMap: Record<string, Record<string, any>> = {};
       const reasonMap: Record<string, Record<string, string>> = {};
       const deductionMap: Record<string, Record<string, number>> = {};
@@ -87,21 +87,21 @@ async function loadAllData() {
       }
       useHRStore.setState({ attendance: attMap, attendanceReasons: reasonMap, attendanceDeductions: deductionMap });
     }
-    if (payroll && payroll.length > 0) useHRStore.setState({ payrollTransactions: payroll });
-    if (vehicles && vehicles.length > 0) useFleetStore.setState({ vehicles });
-    if (shipments && shipments.length > 0) useFleetStore.setState({ shipments });
-    if (suppliers && suppliers.length > 0) useProcurementStore.setState({ suppliers });
-    if (orders && orders.length > 0) useProcurementStore.setState({ orders });
-    if (purchaseReturns && purchaseReturns.length > 0) useProcurementStore.setState({ returns: purchaseReturns });
-    if (supplierPayments && supplierPayments.length > 0) useProcurementStore.setState({ payments: supplierPayments });
-    if (prices && prices.length > 0) usePricingStore.setState({ productPrices: prices });
-    if (alerts && alerts.length > 0) usePricingStore.setState({ pricingAlerts: alerts });
-    if (inventory && inventory.length > 0) useProductionStore.setState({ inventory });
-    if (productionOrders && productionOrders.length > 0) useProductionStore.setState({ orders: productionOrders });
-    if (warehouseConfigs && warehouseConfigs.length > 0) useProductionStore.setState({ warehouseConfigs });
-    if (subAccounts && subAccounts.length > 0) useAppStore.setState({ subAccounts });
-    if (bankAccounts && bankAccounts.length > 0) useAppStore.setState({ bankAccounts });
-    if (walletAccounts && walletAccounts.length > 0) useAppStore.setState({ walletAccounts });
+    if (payroll && payroll.length > 0 && useHRStore.getState().payrollTransactions.length === 0) useHRStore.setState({ payrollTransactions: payroll });
+    if (vehicles && vehicles.length > 0 && useFleetStore.getState().vehicles.length === 0) useFleetStore.setState({ vehicles });
+    if (shipments && shipments.length > 0 && useFleetStore.getState().shipments.length === 0) useFleetStore.setState({ shipments });
+    if (suppliers && suppliers.length > 0 && useProcurementStore.getState().suppliers.length === 0) useProcurementStore.setState({ suppliers });
+    if (orders && orders.length > 0 && useProcurementStore.getState().orders.length === 0) useProcurementStore.setState({ orders });
+    if (purchaseReturns && purchaseReturns.length > 0 && useProcurementStore.getState().returns.length === 0) useProcurementStore.setState({ returns: purchaseReturns });
+    if (supplierPayments && supplierPayments.length > 0 && useProcurementStore.getState().payments.length === 0) useProcurementStore.setState({ payments: supplierPayments });
+    if (prices && prices.length > 0 && usePricingStore.getState().productPrices.length === 0) usePricingStore.setState({ productPrices: prices });
+    if (alerts && alerts.length > 0 && usePricingStore.getState().pricingAlerts.length === 0) usePricingStore.setState({ pricingAlerts: alerts });
+    if (inventory && inventory.length > 0 && useProductionStore.getState().inventory.length === 0) useProductionStore.setState({ inventory });
+    if (productionOrders && productionOrders.length > 0 && useProductionStore.getState().orders.length === 0) useProductionStore.setState({ orders: productionOrders });
+    if (warehouseConfigs && warehouseConfigs.length > 0 && useProductionStore.getState().warehouseConfigs.length === 0) useProductionStore.setState({ warehouseConfigs });
+    if (subAccounts && subAccounts.length > 0 && useAppStore.getState().subAccounts.length === 0) useAppStore.setState({ subAccounts });
+    if (bankAccounts && bankAccounts.length > 0 && useAppStore.getState().bankAccounts.length === 0) useAppStore.setState({ bankAccounts });
+    if (walletAccounts && walletAccounts.length > 0 && useAppStore.getState().walletAccounts.length === 0) useAppStore.setState({ walletAccounts });
     if (activityEntries) {
       const cleaned = activityEntries.filter((e: any) => e.user !== "hidden-owner" && !e.arDescription?.includes("yousef.magar@gmail.com") && !e.enDescription?.includes("yousef.magar@gmail.com"));
       useActivityLog.setState({ entries: cleaned });

@@ -17,34 +17,34 @@ type SyncTask = {
 
 const SYNC_TASKS: SyncTask[] = [
   // Production
-  { fetch: () => api.inventory.list(), apply: (d) => { if (Array.isArray(d) && d.length) useProductionStore.setState({ inventory: d }) } },
-  { fetch: () => api.productionOrders.list(), apply: (d) => { if (Array.isArray(d) && d.length) useProductionStore.setState({ orders: d }) } },
-  { fetch: () => api.warehouseConfigs.list(), apply: (d) => { if (Array.isArray(d) && d.length) useProductionStore.setState({ warehouseConfigs: d }) } },
+  { fetch: () => api.inventory.list(), apply: (d) => { if (Array.isArray(d) && d.length && !useProductionStore.getState().inventory.length) useProductionStore.setState({ inventory: d }) } },
+  { fetch: () => api.productionOrders.list(), apply: (d) => { if (Array.isArray(d) && d.length && !useProductionStore.getState().orders.length) useProductionStore.setState({ orders: d }) } },
+  { fetch: () => api.warehouseConfigs.list(), apply: (d) => { if (Array.isArray(d) && d.length && !useProductionStore.getState().warehouseConfigs.length) useProductionStore.setState({ warehouseConfigs: d }) } },
   // Sales
-  { fetch: () => api.customers.list(), apply: (d) => { if (Array.isArray(d) && d.length) useSalesStore.setState({ customers: d }) } },
-  { fetch: () => api.invoices.list(), apply: (d) => { if (Array.isArray(d) && d.length) useSalesStore.setState({ invoices: d }) } },
-  { fetch: () => api.returns.list(), apply: (d) => { if (Array.isArray(d) && d.length) useSalesStore.setState({ returns: d }) } },
-  { fetch: () => api.payments.list(), apply: (d) => { if (Array.isArray(d) && d.length) useSalesStore.setState({ payments: d }) } },
+  { fetch: () => api.customers.list(), apply: (d) => { if (Array.isArray(d) && d.length && !useSalesStore.getState().customers.length) useSalesStore.setState({ customers: d }) } },
+  { fetch: () => api.invoices.list(), apply: (d) => { if (Array.isArray(d) && d.length && !useSalesStore.getState().invoices.length) useSalesStore.setState({ invoices: d }) } },
+  { fetch: () => api.returns.list(), apply: (d) => { if (Array.isArray(d) && d.length && !useSalesStore.getState().returns.length) useSalesStore.setState({ returns: d }) } },
+  { fetch: () => api.payments.list(), apply: (d) => { if (Array.isArray(d) && d.length && !useSalesStore.getState().payments.length) useSalesStore.setState({ payments: d }) } },
   // HR
-  { fetch: () => api.employees.list(), apply: (d) => { if (Array.isArray(d) && d.length) useHRStore.setState({ employees: d }) } },
-  { fetch: () => api.shifts.list(), apply: (d) => { if (Array.isArray(d) && d.length) useHRStore.setState({ shifts: d }) } },
-  { fetch: () => api.payroll.list(), apply: (d) => { if (Array.isArray(d) && d.length) useHRStore.setState({ payrollTransactions: d }) } },
+  { fetch: () => api.employees.list(), apply: (d) => { if (Array.isArray(d) && d.length && !useHRStore.getState().employees.length) useHRStore.setState({ employees: d }) } },
+  { fetch: () => api.shifts.list(), apply: (d) => { if (Array.isArray(d) && d.length && !useHRStore.getState().shifts.length) useHRStore.setState({ shifts: d }) } },
+  { fetch: () => api.payroll.list(), apply: (d) => { if (Array.isArray(d) && d.length && !useHRStore.getState().payrollTransactions.length) useHRStore.setState({ payrollTransactions: d }) } },
   // Fleet
-  { fetch: () => api.vehicles.list(), apply: (d) => { if (Array.isArray(d) && d.length) useFleetStore.setState({ vehicles: d }) } },
-  { fetch: () => api.shipments.list(), apply: (d) => { if (Array.isArray(d) && d.length) useFleetStore.setState({ shipments: d }) } },
+  { fetch: () => api.vehicles.list(), apply: (d) => { if (Array.isArray(d) && d.length && !useFleetStore.getState().vehicles.length) useFleetStore.setState({ vehicles: d }) } },
+  { fetch: () => api.shipments.list(), apply: (d) => { if (Array.isArray(d) && d.length && !useFleetStore.getState().shipments.length) useFleetStore.setState({ shipments: d }) } },
   // Procurement
-  { fetch: () => api.suppliers.list(), apply: (d) => { if (Array.isArray(d) && d.length) useProcurementStore.setState({ suppliers: d }) } },
-  { fetch: () => api.purchaseOrders.list(), apply: (d) => { if (Array.isArray(d) && d.length) useProcurementStore.setState({ orders: d }) } },
-  { fetch: () => api.purchaseReturns.list(), apply: (d) => { if (Array.isArray(d) && d.length) useProcurementStore.setState({ returns: d }) } },
-  { fetch: () => api.supplierPayments.list(), apply: (d) => { if (Array.isArray(d) && d.length) useProcurementStore.setState({ payments: d }) } },
+  { fetch: () => api.suppliers.list(), apply: (d) => { if (Array.isArray(d) && d.length && !useProcurementStore.getState().suppliers.length) useProcurementStore.setState({ suppliers: d }) } },
+  { fetch: () => api.purchaseOrders.list(), apply: (d) => { if (Array.isArray(d) && d.length && !useProcurementStore.getState().orders.length) useProcurementStore.setState({ orders: d }) } },
+  { fetch: () => api.purchaseReturns.list(), apply: (d) => { if (Array.isArray(d) && d.length && !useProcurementStore.getState().returns.length) useProcurementStore.setState({ returns: d }) } },
+  { fetch: () => api.supplierPayments.list(), apply: (d) => { if (Array.isArray(d) && d.length && !useProcurementStore.getState().payments.length) useProcurementStore.setState({ payments: d }) } },
   // Pricing
-  { fetch: () => api.productPrices.list(), apply: (d) => { if (Array.isArray(d) && d.length) usePricingStore.setState({ productPrices: d }) } },
-  { fetch: () => api.pricingAlerts.list(), apply: (d) => { if (Array.isArray(d) && d.length) usePricingStore.setState({ pricingAlerts: d }) } },
+  { fetch: () => api.productPrices.list(), apply: (d) => { if (Array.isArray(d) && d.length && !usePricingStore.getState().productPrices.length) usePricingStore.setState({ productPrices: d }) } },
+  { fetch: () => api.pricingAlerts.list(), apply: (d) => { if (Array.isArray(d) && d.length && !usePricingStore.getState().pricingAlerts.length) usePricingStore.setState({ pricingAlerts: d }) } },
   // Accounting
-  { fetch: () => api.bankAccounts.list(), apply: (d) => { if (Array.isArray(d) && d.length) useAppStore.setState({ bankAccounts: d }) } },
-  { fetch: () => api.walletAccounts.list(), apply: (d) => { if (Array.isArray(d) && d.length) useAppStore.setState({ walletAccounts: d }) } },
+  { fetch: () => api.bankAccounts.list(), apply: (d) => { if (Array.isArray(d) && d.length && !useAppStore.getState().bankAccounts.length) useAppStore.setState({ bankAccounts: d }) } },
+  { fetch: () => api.walletAccounts.list(), apply: (d) => { if (Array.isArray(d) && d.length && !useAppStore.getState().walletAccounts.length) useAppStore.setState({ walletAccounts: d }) } },
   // Notifications
-  { fetch: () => api.notifications.list(), apply: (d) => { if (Array.isArray(d) && d.length) useNotificationStore.setState({ notifications: d }) } },
+  { fetch: () => api.notifications.list(), apply: (d) => { if (Array.isArray(d) && d.length && !useNotificationStore.getState().notifications.length) useNotificationStore.setState({ notifications: d }) } },
 ];
 
 const SYNC_INTERVAL = 8000;
