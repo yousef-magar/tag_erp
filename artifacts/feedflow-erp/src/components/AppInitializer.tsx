@@ -63,12 +63,12 @@ async function loadAllData() {
       safeFetch(api.notifications.list()),
     ]);
 
-    if (customers) useSalesStore.setState({ customers });
-    if (invoices) useSalesStore.setState({ invoices });
-    if (returns) useSalesStore.setState({ returns });
-    if (payments) useSalesStore.setState({ payments });
-    if (employees) useHRStore.setState({ employees });
-    if (shifts) useHRStore.setState({ shifts });
+    if (customers && customers.length > 0) useSalesStore.setState({ customers });
+    if (invoices && invoices.length > 0) useSalesStore.setState({ invoices });
+    if (returns && returns.length > 0) useSalesStore.setState({ returns });
+    if (payments && payments.length > 0) useSalesStore.setState({ payments });
+    if (employees && employees.length > 0) useHRStore.setState({ employees });
+    if (shifts && shifts.length > 0) useHRStore.setState({ shifts });
     if (attendance) {
       const attMap: Record<string, Record<string, any>> = {};
       const reasonMap: Record<string, Record<string, string>> = {};
@@ -87,26 +87,26 @@ async function loadAllData() {
       }
       useHRStore.setState({ attendance: attMap, attendanceReasons: reasonMap, attendanceDeductions: deductionMap });
     }
-    if (payroll) useHRStore.setState({ payrollTransactions: payroll });
-    if (vehicles) useFleetStore.setState({ vehicles });
-    if (shipments) useFleetStore.setState({ shipments });
-    if (suppliers) useProcurementStore.setState({ suppliers });
-    if (orders) useProcurementStore.setState({ orders });
-    if (purchaseReturns) useProcurementStore.setState({ returns: purchaseReturns });
-    if (supplierPayments) useProcurementStore.setState({ payments: supplierPayments });
-    if (prices) usePricingStore.setState({ productPrices: prices });
-    if (alerts) usePricingStore.setState({ pricingAlerts: alerts });
-    if (inventory) useProductionStore.setState({ inventory });
-    if (productionOrders) useProductionStore.setState({ orders: productionOrders });
-    if (warehouseConfigs) useProductionStore.setState({ warehouseConfigs });
-    if (subAccounts) useAppStore.setState({ subAccounts });
-    if (bankAccounts) useAppStore.setState({ bankAccounts });
-    if (walletAccounts) useAppStore.setState({ walletAccounts });
+    if (payroll && payroll.length > 0) useHRStore.setState({ payrollTransactions: payroll });
+    if (vehicles && vehicles.length > 0) useFleetStore.setState({ vehicles });
+    if (shipments && shipments.length > 0) useFleetStore.setState({ shipments });
+    if (suppliers && suppliers.length > 0) useProcurementStore.setState({ suppliers });
+    if (orders && orders.length > 0) useProcurementStore.setState({ orders });
+    if (purchaseReturns && purchaseReturns.length > 0) useProcurementStore.setState({ returns: purchaseReturns });
+    if (supplierPayments && supplierPayments.length > 0) useProcurementStore.setState({ payments: supplierPayments });
+    if (prices && prices.length > 0) usePricingStore.setState({ productPrices: prices });
+    if (alerts && alerts.length > 0) usePricingStore.setState({ pricingAlerts: alerts });
+    if (inventory && inventory.length > 0) useProductionStore.setState({ inventory });
+    if (productionOrders && productionOrders.length > 0) useProductionStore.setState({ orders: productionOrders });
+    if (warehouseConfigs && warehouseConfigs.length > 0) useProductionStore.setState({ warehouseConfigs });
+    if (subAccounts && subAccounts.length > 0) useAppStore.setState({ subAccounts });
+    if (bankAccounts && bankAccounts.length > 0) useAppStore.setState({ bankAccounts });
+    if (walletAccounts && walletAccounts.length > 0) useAppStore.setState({ walletAccounts });
     if (activityEntries) {
       const cleaned = activityEntries.filter((e: any) => e.user !== "hidden-owner" && !e.arDescription?.includes("yousef.magar@gmail.com") && !e.enDescription?.includes("yousef.magar@gmail.com"));
       useActivityLog.setState({ entries: cleaned });
     }
-    if (notifications) useNotificationStore.setState({ notifications });
+    if (notifications && notifications.length > 0) useNotificationStore.setState({ notifications });
   } catch (err) {
     console.warn("Failed to load data from server, using local storage:", err);
   }
