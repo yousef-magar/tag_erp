@@ -15,7 +15,8 @@ import { getFeedTermSuggestions } from "@/lib/spellcheck";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { motion, AnimatePresence } from "framer-motion";
 import { usePricingStore } from "@/hooks/use-pricing-store";
-import { BarChart3, Download, FileText, Plus, ShoppingBag, CheckCircle2, Package, DollarSign, RotateCcw, Trash2, Search, X, CalendarDays, Clock, CalendarRange, ArrowLeftRight, Store, Hash, Edit3, Phone, MapPin, CreditCard, Banknote, HandCoins, Receipt, AlertTriangle, AlertCircle, UserPlus, Smartphone, Settings2, Pencil, Check } from "lucide-react";
+import { BarChart3, Download, FileText, Plus, ShoppingBag, CheckCircle2, Package, DollarSign, RotateCcw, Trash2, Search, X, CalendarDays, Clock, CalendarRange, ArrowLeftRight, Store, Hash, Edit3, Phone, MapPin, CreditCard, Banknote, HandCoins, Receipt, AlertTriangle, AlertCircle, UserPlus, Smartphone, Settings2, Pencil, Check, Eye } from "lucide-react";
+import { toast } from "sonner";
 
 const containerVariants = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.06 } } };
 const itemVariants = { hidden: { opacity: 0, y: 8 }, show: { opacity: 1, y: 0 } };
@@ -72,6 +73,8 @@ export default function Procurement() {
   const [poWhManageOpen, setPoWhManageOpen] = useState(false);
   const [poEditWhId, setPoEditWhId] = useState<string | null>(null);
   const [poEditWhName, setPoEditWhName] = useState("");
+  const [simplePoItems, setSimplePoItems] = useState(false);
+  const [detailOrder, setDetailOrder] = useState<PurchaseOrder | null>(null);
 
   // Return
   const [retOpen, setRetOpen] = useState(false);
@@ -226,6 +229,21 @@ export default function Procurement() {
 
     if (poEditId) {
       await updateOrder(poEditId, order);
+      // Remove old inventory items linked to this PO, then re-add
+      deleteInventoryItemsBySource(poEditId);
+      for (const item of items) {
+        const unit = item.unit === "كجم" ? "kg" : item.unit === "شيكارة" ? "bag" : "ton";
+        await addInventoryItem({
+          id: `INV-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+          materialName: item.material,
+          quantity: item.qty, initialQuantity: item.qty, consumedQuantity: 0,
+          unit: unit as any, warehouseId: poWarehouse,
+          batchNumber: `B-${todayStr}`, productionDate: todayStr,
+          expiryDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
+          alertLevel: "normal", type: "raw",
+          source: poEditId,
+        });
+      }
     } else {
       await addOrder(order);
 
@@ -400,6 +418,31 @@ export default function Procurement() {
 
   const totalAllocated = useMemo(() => Object.values(payAlloc).reduce((s, v) => s + (v || 0), 0), [payAlloc]);
   const supRemaining = paySup ? paySupOrders.reduce((s, o) => s + orderRemaining(o), 0) : 0;
+
+  // ── Sync existing POs to inventory (for retroactive fix) ──
+  const syncPoToInventory = async () => {
+    let synced = 0;
+    for (const po of orders) {
+      const hasInv = po.items.some(pi => inventory.some(inv => inv.source === po.id && inv.materialName === pi.material));
+      if (hasInv) continue;
+      for (const item of po.items) {
+        const unit = item.unit === "kg" ? "kg" : item.unit === "bag" ? "bag" : "ton";
+        await addInventoryItem({
+          id: `INV-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+          materialName: item.material,
+          quantity: item.qty, initialQuantity: item.qty, consumedQuantity: 0,
+          unit: unit as any, warehouseId: poWarehouse,
+          batchNumber: `B-${po.date || todayStr}`, productionDate: po.date || todayStr,
+          expiryDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
+          alertLevel: "normal", type: "raw",
+          source: po.id,
+        });
+        synced++;
+      }
+    }
+    if (synced > 0) toast.success(t(`تمت مزامنة ${synced} صنف للمخزون`, `Synced ${synced} items to inventory`));
+    else toast.info(t("جميع الأصناف متزامنة بالفعل", "All items already synced"));
+  };
 
   // ── Procurement Report ──
   const handleGenerateProcurementReport = () => {
@@ -644,6 +687,15 @@ export default function Procurement() {
               </div>
             )}
           </div>
+          <div className="flex items-center justify-between pt-1 border-t border-border/30">
+            <p className="text-[10px] text-muted-foreground">
+              {t("إجمالي", "Showing")} {tab === "orders" ? filteredOrders.length : filteredReturns.length} {t("نتيجة", "results")}
+            </p>
+            <Button variant="ghost" size="sm" className="h-7 text-[10px] gap-1 rounded-lg"
+              onClick={syncPoToInventory}>
+              <Package className="w-3 h-3" />{t("مزامنة المخزون", "Sync Inventory")}
+            </Button>
+          </div>
         </div>
       )}
 
@@ -766,6 +818,10 @@ export default function Procurement() {
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center justify-center gap-1">
+                          <button onClick={() => setDetailOrder(o)}
+                            className="w-7 h-7 flex items-center justify-center rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/5 transition-colors" title={t("عرض", "View")}>
+                            <Eye className="w-3.5 h-3.5"/>
+                          </button>
                           <button onClick={() => {
                             setPoEditId(o.id);
                             setPoSupplierId(o.supplierId);
@@ -975,6 +1031,10 @@ export default function Procurement() {
               <div className="flex items-center justify-between">
                 <Label className="text-xs font-semibold">{t("الخامات", "Items")}</Label>
                 <div className="flex gap-1">
+                  <button type="button" onClick={() => setSimplePoItems(!simplePoItems)}
+                    className={`h-7 px-2 rounded-md text-[10px] font-medium transition-colors ${simplePoItems ? "bg-primary/10 text-primary border border-primary/20" : "text-muted-foreground hover:text-foreground border border-transparent"}`}>
+                    {t("مبسط", "Simple")}
+                  </button>
                   {poShowAddMat ? (
                     <div className="flex items-center gap-1">
                       <Input className="h-7 w-[130px] text-xs rounded-lg" placeholder={t("اسم الخامة", "Material name")} value={poNewMatName} onChange={e => setPoNewMatName(e.target.value)} />
@@ -1023,6 +1083,18 @@ export default function Procurement() {
                       placeholder={t("اختر الخامة", "Select material")}
                       className="h-10 rounded-lg text-sm"
                     />
+                    {simplePoItems ? (
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="space-y-1">
+                          <Label className="text-[10px] font-medium text-muted-foreground">{t("الكمية", "Qty")}</Label>
+                          <Input type="number" min="0" className="h-10 text-base font-bold text-center rounded-lg" placeholder="0" value={item.qty} onChange={e => updatePoItem(idx, "qty", e.target.value)} />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-[10px] font-medium text-muted-foreground">{t("السعر", "Price")}</Label>
+                          <Input type="number" min="0" className="h-10 text-base font-bold text-center rounded-lg" placeholder="0" value={item.price} onChange={e => updatePoItem(idx, "price", e.target.value)} />
+                        </div>
+                      </div>
+                    ) : (
                     <div className="grid grid-cols-3 gap-2">
                       <div className="col-span-1 space-y-1">
                         <Label className="text-[10px] font-medium text-muted-foreground">{t("الكمية", "Qty")}</Label>
@@ -1042,6 +1114,7 @@ export default function Procurement() {
                         <Input type="number" min="0" className="h-10 text-base font-bold text-center rounded-lg" placeholder="0" value={item.price} onChange={e => updatePoItem(idx, "price", e.target.value)} />
                       </div>
                     </div>
+                    )}
                     {(parseFloat(item.qty) || 0) > 0 && (parseFloat(item.price) || 0) > 0 && (
                       <div className="text-[10px] text-muted-foreground text-end">
                         {t("المجموع", "Subtotal")}: <span className="font-bold text-foreground">{fmtCurrency((parseFloat(item.qty) || 0) * (parseFloat(item.price) || 0))}</span>
@@ -1657,6 +1730,89 @@ export default function Procurement() {
           <div className="flex gap-3 pt-2">
             <Button variant="outline" className="flex-1 rounded-xl" onClick={() => setDeleteBlockedName(null)}>{t("حسناً", "OK")}</Button>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Order detail dialog */}
+      <Dialog open={!!detailOrder} onOpenChange={v => { if (!v) setDetailOrder(null); }}>
+        <DialogContent className="w-[calc(100vw-32px)] sm:max-w-lg rounded-2xl max-h-[90vh] overflow-y-auto">
+          {detailOrder && (() => {
+            const sup = suppliers.find(s => s.id === detailOrder.supplierId);
+            const isOverdue = detailOrder.status !== "paid" && detailOrder.dueDate && detailOrder.dueDate < todayStr;
+            return (
+              <>
+                <DialogHeader>
+                  <DialogTitle className="flex items-center gap-2">
+                    <FileText className="w-4 h-4 text-primary"/>
+                    {t("تفاصيل أمر الشراء", "Purchase Order Details")}
+                  </DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div>
+                      <p className="text-[10px] text-muted-foreground">{t("رقم الأمر", "PO#")}</p>
+                      <p className="font-bold text-primary">{detailOrder.id}</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-muted-foreground">{t("الحالة", "Status")}</p>
+                      <StatusBadge status={detailOrder.status} dueDate={detailOrder.dueDate} />
+                      {isOverdue && <span className="text-[10px] text-destructive block">{t("متأخر", "Overdue")}</span>}
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-muted-foreground">{t("المورد", "Supplier")}</p>
+                      <p className="font-semibold">{detailOrder.supplierName}</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-muted-foreground">{t("التاريخ", "Date")}</p>
+                      <p>{fmtDate(detailOrder.date)}</p>
+                    </div>
+                    {detailOrder.dueDate && (
+                      <div>
+                        <p className="text-[10px] text-muted-foreground">{t("تاريخ الاستحقاق", "Due Date")}</p>
+                        <p className={isOverdue ? "text-destructive font-medium" : ""}>{fmtDate(detailOrder.dueDate)}</p>
+                      </div>
+                    )}
+                  </div>
+                  <div className="border-t border-border/40 pt-3">
+                    <p className="text-xs font-semibold mb-2">{t("الأصناف", "Items")}</p>
+                    <div className="space-y-1.5">
+                      {detailOrder.items.map((item, i) => (
+                        <div key={i} className="flex items-center justify-between py-1.5 px-2 rounded-lg bg-muted/30 text-sm">
+                          <span className="font-medium">{item.material}</span>
+                          <span className="text-muted-foreground text-xs">{fmtNum(item.qty)} {item.unit} × {fmtCurrency(item.unitPrice)}</span>
+                          <span className="font-bold">{fmtCurrency(item.total)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="border-t border-border/40 pt-3 space-y-1.5 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">{t("الإجمالي", "Total")}</span>
+                      <span className="font-bold text-lg">{fmtCurrency(detailOrder.total)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">{t("المدفوع", "Paid")}</span>
+                      <span className="text-emerald-500 font-medium">{fmtCurrency(detailOrder.paidAmount || 0)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">{t("المتبقي", "Remaining")}</span>
+                      <span className={orderRemaining(detailOrder) > 0 ? "text-destructive font-bold" : "text-emerald-500 font-bold"}>{fmtCurrency(orderRemaining(detailOrder))}</span>
+                    </div>
+                    {orderRemaining(detailOrder) > 0 && (
+                      <div className="w-full h-2 bg-muted rounded-full overflow-hidden mt-1">
+                        <div className="h-full bg-primary rounded-full transition-all" style={{ width: `${Math.min(100, (detailOrder.paidAmount || 0) / detailOrder.total * 100)}%` }} />
+                      </div>
+                    )}
+                    {detailOrder.notes && (
+                      <div className="mt-2 p-2 rounded-lg bg-muted/30 text-xs text-muted-foreground">
+                        <span className="font-medium text-foreground">{t("ملاحظات", "Notes")}:</span> {detailOrder.notes}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </>
+            );
+          })()}
         </DialogContent>
       </Dialog>
 

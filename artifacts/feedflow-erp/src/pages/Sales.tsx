@@ -716,9 +716,10 @@ export default function Sales() {
         updateCustomer(formCustId, { outstandingDebt: newDebt });
       }
       for (const item of formItems) {
-        const match = inventory.find(i => i.type === "finished" && i.materialName === item.productName);
+        const match = inventory.find(i => i.type === "finished" && i.materialName === item.productName)
+          ?? inventory.find(i => i.type === "raw" && i.materialName === item.productName);
         if (match) {
-          const consumed = match.unit === "kg" ? item.qtyTons * 1000 : item.qtyTons;
+          const consumed = match.unit === "kg" ? item.qtyTons * 1000 : match.unit === "bag" ? item.qtyTons * 20 : item.qtyTons;
           const newQty = Math.max(0, +(match.quantity - consumed).toFixed(2));
           const newConsumed = +(match.consumedQuantity + consumed).toFixed(2);
           updateInventoryItem(match.id, { quantity: newQty, consumedQuantity: newConsumed });
@@ -763,9 +764,10 @@ export default function Sales() {
     };
     addReturn(ret);
     for (const item of retItems) {
-      const match = inventory.find(i => i.type === "finished" && i.materialName === item.productName);
+      const match = inventory.find(i => i.type === "finished" && i.materialName === item.productName)
+        ?? inventory.find(i => i.type === "raw" && i.materialName === item.productName);
       if (match) {
-        const added = match.unit === "kg" ? item.qtyTons * 1000 : item.qtyTons;
+        const added = match.unit === "kg" ? item.qtyTons * 1000 : match.unit === "bag" ? item.qtyTons * 20 : item.qtyTons;
         const newQty = +(match.quantity + added).toFixed(2);
         updateInventoryItem(match.id, { quantity: newQty });
       } else {
