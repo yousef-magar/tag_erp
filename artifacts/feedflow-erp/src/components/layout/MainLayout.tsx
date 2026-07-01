@@ -11,6 +11,7 @@ import { GlobalSearch } from "@/components/GlobalSearch";
 import { useKeyboardShortcuts } from "@/hooks/use-keyboard-shortcuts";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useAppStore } from "@/hooks/use-app-store";
+import { SyncEngine } from "@/components/SyncEngine";
 import ShortcutsHelpDialog from "@/components/ShortcutsHelpDialog";
 
 const pageTransition = {
@@ -85,6 +86,7 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
         <MobileNav />
         <GlobalSearch open={globalSearchOpen} onClose={() => setGlobalSearchOpen(false)} />
         <ShortcutsHelpDialog open={helpOpen} onClose={() => setHelpOpen(false)} shortcuts={shortcuts} />
+        <SyncEngine />
       </div>
     );
   }
@@ -122,6 +124,7 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
         </main>
         <GlobalSearch open={globalSearchOpen} onClose={() => setGlobalSearchOpen(false)} />
         <ShortcutsHelpDialog open={helpOpen} onClose={() => setHelpOpen(false)} shortcuts={shortcuts} />
+        <SyncEngine />
       </div>
     </div>
   );
